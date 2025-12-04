@@ -1,0 +1,33 @@
+## local builds and dependencies
+dist
+node_modules
+
+# resolved configs
+.config/*.api.yml
+.config/*.api.resolved.yml
+.config/*.api.override.yml
+
+## package manager
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+# cache is reused for faster CI builds
+!.yarn/cache
+
+# development and deployment
+.vscode
+/.idea
+.DS_Store
+/.github
+/docs
+.editorconfig
+.gitattributes
+/README.md
+.tmp
+
+# scaffolding
+.scaffold*
+*.scaffold.*
+

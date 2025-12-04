@@ -1,0 +1,42 @@
+## dependencies
+node_modules
+
+## package manager
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+## example: store all packages locally
+#!.yarn/cache
+
+## example: store some packages locally
+##  in `.yarnrc.yml` set `enableGlobalCache: false`
+#!.yarn/cache
+#.yarn/cache/*
+
+## IDE Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## IDE WebStorm
+# todo: check if there are items we can share
+.idea/*
+
+# OS
+.DS_Store
+
+## local
+.env
+*.env
+/dist
+/.tmp
+
+# config
+.config/*.api.yml
+.config/*.api.resolved.yml
+.config/*.api.override.yml

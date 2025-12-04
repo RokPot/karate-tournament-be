@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Yarn Test",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": [
+                "test",
+            ],
+            "console": "integratedTerminal",
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Yarn star:dev",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": [
+                "start:dev"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "yarn start:worker",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": [
+                "start:worker"
+            ],
+            "env": {
+                "RUN_MODE": "worker"
+            },
+            "console": "integratedTerminal"
+        }
+    ]
+}

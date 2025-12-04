@@ -1,0 +1,11 @@
+# ECS Deploy configuration file for STAGE=test
+# @see https://github.com/povio/ecs-deploy-cli/tree/v4?tab=readme-ov-file#configure
+
+# resolved at runtime using `ecs-deploy config api --stage test`
+configs:
+  - name: api
+    region: us-east-1
+    destination: ./.config/test.api.resolved.yml
+    values:
+      - name: "@"
+        configFrom: api.template

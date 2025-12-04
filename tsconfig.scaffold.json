@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules"
+  ],
+  "include": [
+    "**/.*.scaffold.ts",
+    "**/.scaffold.ts",
+    "**/.scaffold/*.ts",
+    "**/.scaffold/.*.ts"
+  ]
+}

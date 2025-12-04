@@ -1,0 +1,31 @@
+{
+  "remote.extensionKind": {
+    "ms-vscode-remote.remote-containers": ["ui"]
+  },
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "server": "postgres",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "local",
+      "database": "db",
+      "username": "admin",
+      "password": "admin"
+    }
+  ],
+  "search.exclude": {
+    "**/.yarn": true,
+    "**/.pnp.*": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always",
+    "source.fixAll.tslint": "always",
+    "source.fixAll.stylelint": "always"
+  },
+  "eslint.enable": true,
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+  "eslint.nodePath": ".yarn/sdks",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

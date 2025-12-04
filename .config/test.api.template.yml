@@ -1,0 +1,76 @@
+## Configuration for STAGE=test
+##  - test.api.template.yml is commited to git and uses ${} functions
+##  - test.api.resolved.yml is generated on "yarn bootstrap --stage test"
+##  - test.api.override.yml can be used for local overrides
+
+core:
+  stage: test
+  release: ${func:release}
+  webBaseUrl: 'http://localhost:8000'
+  apiBaseUrl: 'http://localhost:3000'
+  service: lossdog-be
+
+http:
+  log: true
+  port: 3000
+  host: 0.0.0.0
+  validateResponse: throw
+  cors:
+    origin: true
+    maxAge: 3600
+  openapi:
+    mode: disabled
+    title: LossDog Backend
+    description: LossDog Backend
+    username: admin
+    password: admin
+
+logger:
+  output: console
+  # limit output from tests
+  level: verbose
+
+database:
+  host: localhost
+  port: 5433
+  database: tournament-app-test
+  username: admin
+  password: admin
+  ssl: false
+  synchronize: false
+  autoMigrate: false
+  logging: false
+
+auth0:
+  domain: your-tenant.auth0.com
+  clientId: test-client-id
+  clientSecret: test-client-secret
+  audience: https://api.tournament-app.com
+
+
+bls:
+  api:
+    apiKey: 'fake-key'
+    baseUrl: 'https://api.bls.gov'
+
+automationTesting:
+  enableAutomationEndpoints: false
+
+personas:
+  defaultPassword: ''
+
+
+stripe:
+  enabled: true
+  secretKey: ChangeMe
+  webhookSecret: ChangeMe
+
+userSubscription:
+  paywallEnabled: false
+  premiumProductId: ChangeMe
+
+app:
+  business:
+    baseUrl: https://biz.dev.lossdog.com
+  individuals:
+    baseUrl: https://dev.lossdog.com

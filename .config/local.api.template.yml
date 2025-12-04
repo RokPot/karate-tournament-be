@@ -1,0 +1,112 @@
+## Configuration for STAGE=local
+##  - local.api.template.yml is commited to git and uses ${} functions
+##  - local.api.resolved.yml is generated on "yarn bootstrap --stage local"
+##  - local.api.override.yml can be used for local overrides
+
+core:
+  stage: ${func:stage}
+  release: ${func:release}
+  webBaseUrl: 'http://localhost:8000'
+  apiBaseUrl: 'http://localhost:3002'
+  service: lossdog-be
+
+http:
+  log: true
+  port: 3002
+  host: 0.0.0.0
+  validateResponse: warn
+  cors:
+    origin: true
+    maxAge: 3600
+  openapi:
+    mode: runtime
+    path: docs
+    title: LossDog Backend
+    description: LossDog Backend
+    username: admin
+    password: admin
+  pagination:
+    limitMin: 1
+    limitMax: 100
+    limitDefault: 10
+
+logger:
+  output: console
+  level: debug # default log level
+  contexts:
+    # per context log level
+    InstanceLoader: warn
+    RouterExplorer: warn
+    HttpException: log
+    SocketIOService: debug
+    AuthnService: log
+  sentry:
+    dsn: false
+    level: error
+    contexts:
+      Bootstrap: none
+      HttpException: error
+      ExceptionHandler: error
+      RoutesResolver: none
+      RouterExplorer: none
+      NestApplication: none
+      SocketIOService: warn
+
+database:
+  host: localhost
+  port: 5432
+  database: tournament-app
+  username: admin
+  password: admin
+  ssl: false
+  synchronize: false
+  autoMigrate: false
+  logging: true
+
+auth0:
+  domain: dev-roky.eu.auth0.com
+  clientId: JIZIYl0F3z7rARQZ92Wc3ySg2KFyS1gx
+  clientSecret: V-ehWbpYuWLcA8mXHyYiMf7lRstBaDS5Az_6rncZuFUmutRvo48oYz_a3yfB4fnH
+  audience: https://api.tournament-app.com
+
+
+websocket:
+  socketio:
+    serverUrl: http://localhost:6379
+
+
+fred:
+  stlouis:
+    apiKey:
+    baseUrl: 'https://api.stlouisfed.org/fred'
+
+bls:
+  api:
+    apiKey: 'fake-key'
+    baseUrl: 'https://api.bls.gov'
+
+automationTesting:
+  enableAutomationEndpoints: true
+  allowedDomains:
+    - playwright-testing.com
+  allowedEmails:
+    - admin@lossdog.com
+
+personas:
+  defaultPassword: 'LocalDog'
+
+
+stripe:
+  enabled: true
+  secretKey: ChangeMe
+  webhookSecret: ChangeMe
+
+userSubscription:
+  paywallEnabled: false
+  premiumProductId: ChangeMe
+
+app:
+  business:
+    baseUrl: http://localhost:3000
+  individuals:
+    baseUrl: http://localhost:3000

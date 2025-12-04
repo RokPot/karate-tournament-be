@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Node16",
+    "module": "Node16",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": false,
+    "resolveJsonModule": true,
+    "alwaysStrict": true,
+    "paths": {
+      "~*": [
+        "./src/*"
+      ],
+      "~test/*": [
+        "./test/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/.*.scaffold.ts",
+    "**/.scaffold.ts",
+    "**/.scaffold/*",
+    "packages",
+    "**/*.unit.ts",
+    "**/*.e2e.ts",
+    "test/**/*.ts"
+  ]
+}
