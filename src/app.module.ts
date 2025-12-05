@@ -12,6 +12,8 @@ import { WebsocketModule } from '~common/websocket/websocket.module';
 import { DatabaseModule } from '~database';
 
 import { TestModule } from '~modules/test/test.module';
+import { UserModule } from '~modules/user/user.module';
+import { ClubModule } from '~modules/club/club.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { TestModule } from '~modules/test/test.module';
     ]),
 
     // modules
+    UserModule,
+    ClubModule,
     TestModule,
   ].filter((module) => module !== null),
   providers: [

@@ -28,7 +28,7 @@ export class Auth0Config {
 
   /**
    * Auth0 Audience (API Identifier)
-   * Optional, but recommended for API authentication
+   * This should match the identifier you set when creating the API in Auth0 Dashboard
    */
   @Expose()
   @IsOptional()
@@ -46,8 +46,13 @@ export class Auth0Config {
 
   /**
    * Get the issuer base URL
+   * Auth0 tokens typically have the issuer with a trailing slash
    */
   get issuer(): string {
-    return this.issuerBaseUrl || `https://${this.domain}`;
+    if (this.issuerBaseUrl) {
+      return this.issuerBaseUrl.endsWith('/') ? this.issuerBaseUrl : `${this.issuerBaseUrl}/`;
+    }
+    return `https://${this.domain}/`;
   }
 }
+

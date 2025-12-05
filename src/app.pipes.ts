@@ -10,6 +10,7 @@ import { useTimeoutInterceptor } from '~common/http/interceptors/timeout.interce
 import { setupOpenApi } from '~common/http/openapi/openapi.middleware';
 import { ExpressLoggerMiddleware } from '~common/logger/express-logger.middleware';
 import { getValidationPipe } from '~common/validate';
+import { useUserSyncInterceptor } from '~modules/user/user-sync.interceptor';
 
 /**
  * Standard request pipeline
@@ -51,6 +52,10 @@ export function requestPipes(app: INestApplication): void {
   );
 
   useTimeoutInterceptor(app);
+
+  // User sync interceptor - creates User entity from Auth0 payload on first authenticated request
+  // This must run after Auth0Guard validation (which happens in guards, before interceptors)
+  useUserSyncInterceptor(app);
 
   // hook: after-interceptors
   setupOpenApi(app);

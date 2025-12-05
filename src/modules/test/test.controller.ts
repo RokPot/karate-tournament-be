@@ -45,24 +45,14 @@ export class TestController {
     return response;
   }
 
-  @Public()
-  @Get('query')
-  @ApiOperation({ summary: 'Query parameter endpoint', description: 'Accepts query parameters and returns them' })
-  @ApiQuery({ name: 'name', required: false, description: 'Name parameter', example: 'John' })
-  @ApiQuery({ name: 'age', required: false, description: 'Age parameter', example: '25', type: Number })
-  @ApiResponse({ status: 200, description: 'Query parameters returned', type: TestQueryResponseDto })
-  public async queryTest(@Query('name') name?: string, @Query('age') age?: string): Promise<TestQueryResponseDto> {
-    const response = new TestQueryResponseDto();
-    response.name = name;
-    response.age = age;
-    return response;
-  }
+  
 
-  @Public()
   @Post()
+  @ApiBearerAuth('Authorization')
   @ApiOperation({ summary: 'POST endpoint with body', description: 'Accepts a JSON body and returns it with metadata' })
   @ApiResponse({ status: 201, description: 'Successfully created', type: TestResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   public async postTest(@Body() body: TestRequestDto): Promise<TestResponseDto> {
     const response = new TestResponseDto();
     response.message = 'Test endpoint called successfully';
@@ -71,19 +61,5 @@ export class TestController {
     return response;
   }
 
-  @Get('protected')
-  @ApiBearerAuth('Authorization')
-  @ApiOperation({ summary: 'Protected endpoint', description: 'This endpoint requires authentication via Auth0' })
-  @ApiResponse({
-    status: 200,
-    description: 'Success - user is authenticated',
-    type: TestProtectedResponseDto,
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
-  public async protectedTest(): Promise<TestProtectedResponseDto> {
-    const response = new TestProtectedResponseDto();
-    response.message = 'This is a protected endpoint';
-    response.note = 'You need to authenticate with Auth0 to access this endpoint';
-    return response;
-  }
+  
 }

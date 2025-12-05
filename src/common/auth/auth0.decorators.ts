@@ -4,13 +4,38 @@ import { Request } from 'express';
 import { Auth0Payload } from './auth0.strategy';
 
 /**
- * Mark a route as public (no authentication required)
+ * Public Route Decorator
+ * 
+ * Marks a route as public, bypassing Auth0 authentication.
+ * 
+ * Usage:
+ * ```typescript
+ * @Public()
+ * @Get('health')
+ * check() {
+ *   return { status: 'ok' };
+ * }
+ * ```
  */
 export const Public = () => SetMetadata('isPublic', true);
 
 /**
- * Get the authenticated user from the request
- * Usage: @CurrentUser() user: Auth0Payload
+ * Current User Decorator
+ * 
+ * Extracts the authenticated user from the request.
+ * The user object contains the Auth0 JWT payload.
+ * 
+ * Usage:
+ * ```typescript
+ * @Get('profile')
+ * getProfile(@CurrentUser() user: Auth0Payload) {
+ *   return {
+ *     id: user.sub,
+ *     email: user.email,
+ *     name: user.name,
+ *   };
+ * }
+ * ```
  */
 export const CurrentUser = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): Auth0Payload => {
@@ -20,8 +45,17 @@ export const CurrentUser = createParamDecorator(
 );
 
 /**
- * Get the user ID from the authenticated user
- * Usage: @UserId() userId: string
+ * User ID Decorator
+ * 
+ * Extracts the user ID (subject) from the authenticated user.
+ * 
+ * Usage:
+ * ```typescript
+ * @Get('my-data')
+ * getMyData(@UserId() userId: string) {
+ *   return this.service.findByUserId(userId);
+ * }
+ * ```
  */
 export const UserId = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): string => {

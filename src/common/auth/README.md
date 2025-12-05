@@ -1,6 +1,6 @@
 # Auth0 Authentication
 
-This module provides Auth0 JWT authentication for the tournament application using Passport.js.
+This module provides Auth0 JWT authentication for the application using Passport.js, following the [Auth0 NestJS guide](https://auth0.com/blog/developing-a-secure-api-with-nestjs-adding-authorization/).
 
 ## Configuration
 
@@ -29,12 +29,15 @@ auth0:
 ## Setup
 
 1. Create an Auth0 account at https://auth0.com
-2. Create a new API in Auth0 Dashboard
+2. Create a new **API** in Auth0 Dashboard:
+   - Go to **APIs** → **Create API**
+   - Set **Identifier** (this is your `audience` value)
+   - Choose **RS256** signing algorithm
 3. Note your:
-   - Domain (e.g., `your-tenant.auth0.com`)
-   - Client ID
-   - Client Secret
-   - API Identifier (Audience)
+   - **Domain** (e.g., `your-tenant.auth0.com`)
+   - **Client ID** (from your Machine-to-Machine application)
+   - **Client Secret** (from your Machine-to-Machine application)
+   - **API Identifier** (this is your `audience`)
 4. Add these values to your config files
 
 ## Usage
@@ -85,23 +88,24 @@ export class ProfileController {
 }
 ```
 
-### Manual Guard Usage
+### Testing in Swagger
 
-If you need to use the guard manually (instead of global):
+1. **Get an Auth0 token:**
+   - Use Auth0 Dashboard → APIs → Your API → Test tab
+   - Or use Machine-to-Machine flow to get a token
 
-```typescript
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { Auth0Guard } from '~common/auth';
+2. **Open Swagger UI:**
+   - Navigate to `http://localhost:3002/docs`
+   - Login with your Swagger credentials
 
-@Controller('protected')
-@UseGuards(Auth0Guard)
-export class ProtectedController {
-  @Get()
-  protected() {
-    return { message: 'This is protected' };
-  }
-}
-```
+3. **Authorize:**
+   - Click the **"Authorize"** button (lock icon)
+   - Enter your token: `Bearer YOUR_TOKEN` or just `YOUR_TOKEN`
+   - Click **Authorize**
+
+4. **Test protected endpoints:**
+   - Try `/test/protected` - should work with token
+   - Try without token - should return 401
 
 ## Auth0 Payload
 
@@ -118,13 +122,19 @@ The `Auth0Payload` interface includes:
 - `iat` - Issued at timestamp
 - `exp` - Expiration timestamp
 
-## Testing
+## How It Works
 
-For testing, you can:
-
-1. Use `@Public()` decorator to bypass authentication
-2. Mock the `Auth0Guard` in your tests
-3. Use Auth0's test tokens for integration tests
+1. **Client** authenticates with Auth0 and receives a JWT access token
+2. **Client** sends requests with `Authorization: Bearer <token>` header
+3. **Auth0Guard** intercepts the request:
+   - Checks if route is `@Public()` - if yes, allows access
+   - Otherwise, validates the JWT token using `Auth0Strategy`
+4. **Auth0Strategy** validates the token:
+   - Extracts token from `Authorization` header
+   - Fetches public key from Auth0's JWKS endpoint
+   - Verifies token signature, audience, and issuer
+   - Returns the decoded payload
+5. **Controller** receives the authenticated user via `@CurrentUser()` or `@UserId()`
 
 ## Important Notes
 
@@ -132,4 +142,5 @@ For testing, you can:
 - Tokens are automatically validated for expiration
 - The `audience` must match your Auth0 API identifier
 - All routes are protected by default unless marked with `@Public()`
+- JWKS keys are cached to improve performance
 
