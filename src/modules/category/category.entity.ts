@@ -4,16 +4,15 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
+  ManyToMany,
   OneToMany,
-  JoinColumn,
 } from 'typeorm';
 
 import { Discipline, CategoryGender, BeltLevel } from '~common/enums';
 
-import { Tournament } from '../tournament/tournament.entity';
-import { Registration } from '../registration/registration.entity';
 import { Bracket } from '../bracket/bracket.entity';
+import { Registration } from '../registration/registration.entity';
+import { Tournament } from '../tournament/tournament.entity';
 
 /**
  * Category Entity
@@ -24,17 +23,14 @@ export class Category {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'uuid' })
-  tournamentId!: string;
-
   @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'enum', enum: Discipline })
   discipline!: Discipline;
 
-  @Column({ type: 'enum', enum: CategoryGender })
-  gender!: CategoryGender;
+  @Column({ type: 'enum', enum: CategoryGender, array: true, default: [] })
+  gender!: CategoryGender[];
 
   @Column({ type: 'int' })
   ageMin!: number;
@@ -54,9 +50,6 @@ export class Category {
   @Column({ type: 'enum', enum: BeltLevel })
   beltMax!: BeltLevel;
 
-  @Column({ type: 'int', nullable: true })
-  tatami!: number | null;
-
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
 
@@ -64,9 +57,8 @@ export class Category {
   updatedAt!: Date;
 
   // Relations
-  @ManyToOne(() => Tournament, (tournament) => tournament.categories)
-  @JoinColumn({ name: 'tournamentId' })
-  tournament!: Tournament;
+  @ManyToMany(() => Tournament, (tournament) => tournament.categories)
+  tournaments!: Tournament[];
 
   @OneToMany(() => Registration, (registration) => registration.category)
   registrations!: Registration[];
@@ -74,4 +66,3 @@ export class Category {
   @OneToMany(() => Bracket, (bracket) => bracket.category)
   brackets!: Bracket[];
 }
-

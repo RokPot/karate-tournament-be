@@ -30,6 +30,7 @@ export enum BeltLevel {
 }
 
 export enum UserRole {
+  ADMIN = 'admin',
   ORGANIZER = 'organizer',
   COACH = 'coach',
   COMPETITOR = 'competitor',
@@ -40,12 +41,12 @@ export enum UserRole {
 export enum Discipline {
   KATA = 'kata',
   KUMITE = 'kumite',
+  YAKO_SOKU = 'yako-soku',
 }
 
 export enum CategoryGender {
   MALE = 'male',
   FEMALE = 'female',
-  MIXED = 'mixed',
 }
 
 export enum RegistrationStatus {
@@ -53,4 +54,3 @@ export enum RegistrationStatus {
   APPROVED = 'approved',
   REJECTED = 'rejected',
 }
-

@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 
 import { Gender, BeltLevel, UserRole } from '~common/enums';
+
 import { ClubResponseDto } from '../../club/dto/club-response.dto';
 
 /**
@@ -91,6 +92,7 @@ export class UserResponseDto {
   roles!: UserRole[];
 
   @Expose()
+  @Type(() => ClubResponseDto)
   @ApiPropertyOptional({
     description: 'Club information',
     type: ClubResponseDto,
@@ -112,4 +114,3 @@ export class UserResponseDto {
   })
   updatedAt!: Date;
 }
-

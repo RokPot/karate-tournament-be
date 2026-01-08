@@ -7,20 +7,23 @@ import {
   ManyToOne,
   OneToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 
-import { User } from '../user/user.entity';
+import { RegistrationStatus } from '~common/enums';
+
+import { Bracket } from '../bracket/bracket.entity';
+import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
 import { Tournament } from '../tournament/tournament.entity';
-import { Category } from '../category/category.entity';
-import { Bracket } from '../bracket/bracket.entity';
-import { RegistrationStatus } from '~common/enums';
+import { User } from '../user/user.entity';
 
 /**
  * Registration Entity
  * A user registered into a category for a specific tournament.
  */
 @Entity('registrations')
+@Index(['userId', 'tournamentId', 'categoryId'], { unique: true })
 export class Registration {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -69,4 +72,3 @@ export class Registration {
   @OneToOne(() => Bracket, (bracket) => bracket.registration, { nullable: true })
   bracket!: Bracket | null;
 }
-

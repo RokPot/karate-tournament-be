@@ -5,13 +5,15 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  ManyToMany,
   OneToMany,
   JoinColumn,
+  JoinTable,
 } from 'typeorm';
 
-import { User } from '../user/user.entity';
 import { Category } from '../category/category.entity';
 import { Registration } from '../registration/registration.entity';
+import { User } from '../user/user.entity';
 
 /**
  * Tournament Entity
@@ -51,10 +53,14 @@ export class Tournament {
   @JoinColumn({ name: 'createdBy' })
   createdByUser!: User;
 
-  @OneToMany(() => Category, (category) => category.tournament)
+  @ManyToMany(() => Category, (category) => category.tournaments)
+  @JoinTable({
+    name: 'tournament_categories',
+    joinColumn: { name: 'tournamentId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' },
+  })
   categories!: Category[];
 
   @OneToMany(() => Registration, (registration) => registration.tournament)
   registrations!: Registration[];
 }
-

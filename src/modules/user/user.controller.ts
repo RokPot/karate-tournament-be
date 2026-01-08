@@ -1,20 +1,12 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Body,
-  Param,
-  HttpCode,
-  HttpStatus,
-  NotFoundException,
-} from '@nestjs/common';
+import { Controller, Get, Put, Body, Param, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
 
-import { CurrentUserEntity } from './user.decorators';
-import { UserService } from './user.service';
-import { User } from './user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { CurrentUserEntity } from './user.decorators';
+import { User } from './user.entity';
+import { UserService } from './user.service';
 
 /**
  * User Controller
@@ -42,7 +34,10 @@ export class UserController {
     if (!fullUser) {
       throw new NotFoundException('User not found');
     }
-    return fullUser as UserResponseDto;
+    return plainToInstance(UserResponseDto, fullUser, {
+      excludeExtraneousValues: true,
+      exposeDefaultValues: true,
+    });
   }
 
   @Put('me')
@@ -53,10 +48,7 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User profile updated', type: UserResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
-  async updateProfile(
-    @CurrentUserEntity() user: User,
-    @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UserResponseDto> {
+  async updateProfile(@CurrentUserEntity() user: User, @Body() updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -68,7 +60,10 @@ export class UserController {
     }
 
     const updated = await this.userService.update(user.id, updateData);
-    return updated as UserResponseDto;
+    return plainToInstance(UserResponseDto, updated, {
+      excludeExtraneousValues: true,
+      exposeDefaultValues: true,
+    });
   }
 
   @Get(':id')
@@ -85,7 +80,9 @@ export class UserController {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    return user as UserResponseDto;
+    return plainToInstance(UserResponseDto, user, {
+      excludeExtraneousValues: true,
+      exposeDefaultValues: true,
+    });
   }
 }
-
