@@ -1,6 +1,5 @@
 import { Controller, Get, Put, Body, Param, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { plainToInstance } from 'class-transformer';
 
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -34,10 +33,7 @@ export class UserController {
     if (!fullUser) {
       throw new NotFoundException('User not found');
     }
-    return plainToInstance(UserResponseDto, fullUser, {
-      excludeExtraneousValues: true,
-      exposeDefaultValues: true,
-    });
+    return UserResponseDto.fromDomain(fullUser);
   }
 
   @Put('me')
@@ -60,10 +56,7 @@ export class UserController {
     }
 
     const updated = await this.userService.update(user.id, updateData);
-    return plainToInstance(UserResponseDto, updated, {
-      excludeExtraneousValues: true,
-      exposeDefaultValues: true,
-    });
+    return UserResponseDto.fromDomain(updated);
   }
 
   @Get(':id')
@@ -80,9 +73,6 @@ export class UserController {
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    return plainToInstance(UserResponseDto, user, {
-      excludeExtraneousValues: true,
-      exposeDefaultValues: true,
-    });
+    return UserResponseDto.fromDomain(user);
   }
 }

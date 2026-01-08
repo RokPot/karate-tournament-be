@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
+import { Club } from '../club.entity';
+
 /**
  * Club Response DTO
  * Data transfer object for club responses.
@@ -49,5 +51,24 @@ export class ClubResponseDto {
     example: '2024-01-01T00:00:00.000Z',
   })
   updatedAt!: Date;
+
+  constructor(data: IClubResponseDto) {
+    Object.assign(this, data);
+  }
+
+  /**
+   * Creates a ClubResponseDto instance from a Club entity
+   */
+  static fromDomain(club: Club): ClubResponseDto {
+    return new ClubResponseDto({
+      id: club.id,
+      name: club.name,
+      address: club.address,
+      country: club.country,
+      createdAt: club.createdAt,
+      updatedAt: club.updatedAt,
+    });
+  }
 }
 
+export interface IClubResponseDto extends ClubResponseDto {}

@@ -4,6 +4,7 @@ import { Expose, Type } from 'class-transformer';
 import { Gender, BeltLevel, UserRole } from '~common/enums';
 
 import { ClubResponseDto } from '../../club/dto/club-response.dto';
+import { User } from '../user.entity';
 
 /**
  * User Response DTO
@@ -113,4 +114,31 @@ export class UserResponseDto {
     example: '2024-01-01T00:00:00.000Z',
   })
   updatedAt!: Date;
+
+  constructor(data: IUserResponseDto) {
+    Object.assign(this, data);
+  }
+
+  /**
+   * Creates a UserResponseDto instance from a User entity
+   */
+  static fromDomain(user: User): UserResponseDto {
+    return new UserResponseDto({
+      id: user.id,
+      auth0Id: user.auth0Id,
+      clubId: user.clubId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      gender: user.gender,
+      birthDate: user.birthDate,
+      weight: user.weight,
+      beltLevel: user.beltLevel,
+      roles: user.roles,
+      club: user.club ? ClubResponseDto.fromDomain(user.club) : null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+  }
 }
+
+export interface IUserResponseDto extends UserResponseDto {}
