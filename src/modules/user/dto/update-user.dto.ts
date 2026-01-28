@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
-import { IsString, IsOptional, IsEnum, IsDateString, IsNumber, IsArray, MaxLength, Min, Max } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsString, IsOptional, IsEnum, IsNumber, IsArray, MaxLength, Min, Max } from 'class-validator';
 
 import { Gender, BeltLevel, UserRole } from '~common/enums';
 
@@ -47,10 +47,11 @@ export class UpdateUserDto {
     example: '1990-01-01',
     type: String,
     format: 'date',
+    nullable: true,
   })
   @IsOptional()
-  @IsDateString()
-  birthDate?: string;
+  @IsString()
+  birthDate?: string | null;
 
   @Expose()
   @ApiPropertyOptional({
@@ -60,6 +61,7 @@ export class UpdateUserDto {
     maximum: 999.99,
   })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(999.99)
@@ -96,4 +98,3 @@ export class UpdateUserDto {
   @IsString()
   clubId?: string;
 }
-

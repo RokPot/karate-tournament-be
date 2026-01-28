@@ -12,6 +12,8 @@ import {
 
 import { RegistrationStatus } from '~common/enums';
 
+import { numericTransformer } from '~database/transformers/numeric.transformer';
+
 import { Bracket } from '../bracket/bracket.entity';
 import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
@@ -43,7 +45,13 @@ export class Registration {
   @Column({ type: 'enum', enum: RegistrationStatus, default: RegistrationStatus.PENDING })
   status!: RegistrationStatus;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   finalWeight!: number | null;
 
   @CreateDateColumn({ type: 'timestamp' })

@@ -20,7 +20,7 @@
     "openapi:build": "nest start --config src/common/http/openapi/openapi.tsc.nest-cli.json",
     "openapi:lint": "yarn openapi-codegen check --input http://localhost:3002/docs-json",
     "typeorm": "tsx node_modules/typeorm/cli.js",
-    "migration:generate": "yarn typeorm migration:generate -d src/database/data-source.ts",
+    "migration:generate": "yarn typeorm migration:generate -d src/database/data-source.ts src/database/migrations/migration",
     "migration:create": "yarn typeorm migration:create",
     "migration:run": "yarn typeorm migration:run -d src/database/data-source.ts",
     "migration:revert": "yarn typeorm migration:revert -d src/database/data-source.ts"

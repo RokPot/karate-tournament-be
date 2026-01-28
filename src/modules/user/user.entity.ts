@@ -9,14 +9,15 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { Exclude } from 'class-transformer';
 
 import { Gender, BeltLevel, UserRole } from '~common/enums';
 
+import { numericTransformer } from '~database/transformers/numeric.transformer';
+
+import { AuditLog } from '../audit-log/audit-log.entity';
 import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { Score } from '../score/score.entity';
-import { AuditLog } from '../audit-log/audit-log.entity';
 
 /**
  * User Entity
@@ -44,10 +45,16 @@ export class User {
   @Column({ type: 'enum', enum: Gender, nullable: true })
   gender!: Gender | null;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   birthDate!: Date | null;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   weight!: number | null;
 
   @Column({ type: 'enum', enum: BeltLevel, nullable: true })
@@ -76,4 +83,3 @@ export class User {
   @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
   auditLogs!: AuditLog[];
 }
-

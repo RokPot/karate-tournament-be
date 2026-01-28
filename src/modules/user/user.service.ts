@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 
 import { Auth0Payload } from '~common/auth';
 
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.entity';
 
 /**
@@ -100,8 +101,22 @@ export class UserService {
   /**
    * Update user profile
    */
-  async update(id: string, data: Partial<User>): Promise<User> {
-    await this.userRepository.update(id, data);
+  async update(id: string, data: UpdateUserDto): Promise<User> {
+    // Convert string date to Date object if provided
+    const updateData: Partial<User> = {};
+
+    if (data.firstName !== undefined) updateData.firstName = data.firstName || null;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName || null;
+    if (data.gender !== undefined) updateData.gender = data.gender || null;
+    if (data.birthDate !== undefined) {
+      updateData.birthDate = data.birthDate ? new Date(data.birthDate) : null;
+    }
+    if (data.weight !== undefined) updateData.weight = data.weight || null;
+    if (data.beltLevel !== undefined) updateData.beltLevel = data.beltLevel || null;
+    if (data.roles !== undefined) updateData.roles = data.roles;
+    if (data.clubId !== undefined) updateData.clubId = data.clubId || null;
+
+    await this.userRepository.update(id, updateData);
     const updated = await this.findById(id);
     if (!updated) {
       throw new Error(`User not found: ${id}`);
@@ -118,4 +133,3 @@ export class UserService {
     });
   }
 }
-

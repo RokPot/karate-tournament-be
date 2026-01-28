@@ -49,13 +49,7 @@ export class UserController {
       throw new NotFoundException('User not found');
     }
 
-    // Convert date string to Date object if provided
-    const updateData: any = { ...updateUserDto };
-    if (updateUserDto.birthDate) {
-      updateData.birthDate = new Date(updateUserDto.birthDate);
-    }
-
-    const updated = await this.userService.update(user.id, updateData);
+    const updated = await this.userService.update(user.id, updateUserDto);
     return UserResponseDto.fromDomain(updated);
   }
 

@@ -11,9 +11,12 @@ import { WebsocketModule } from '~common/websocket/websocket.module';
 
 import { DatabaseModule } from '~database';
 
-import { TestModule } from '~modules/test/test.module';
-import { UserModule } from '~modules/user/user.module';
+import { CategoryModule } from '~modules/category/category.module';
 import { ClubModule } from '~modules/club/club.module';
+import { RegistrationModule } from '~modules/registration/registration.module';
+import { TestModule } from '~modules/test/test.module';
+import { TournamentModule } from '~modules/tournament/tournament.module';
+import { UserModule } from '~modules/user/user.module';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { ClubModule } from '~modules/club/club.module';
     // modules
     UserModule,
     ClubModule,
+    RegistrationModule,
+    TournamentModule,
+    CategoryModule,
     TestModule,
   ].filter((module) => module !== null),
   providers: [

@@ -1,20 +1,10 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 import { ClubService } from './club.service';
+import { ClubResponseDto } from './dto/club-response.dto';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
-import { ClubResponseDto } from './dto/club-response.dto';
 
 /**
  * Club Controller
@@ -34,7 +24,7 @@ export class ClubController {
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   async create(@Body() createClubDto: CreateClubDto): Promise<ClubResponseDto> {
     const club = await this.clubService.create(createClubDto);
-    return club as ClubResponseDto;
+    return ClubResponseDto.fromDomain(club);
   }
 
   @Get()
@@ -43,7 +33,7 @@ export class ClubController {
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   async findAll(): Promise<ClubResponseDto[]> {
     const clubs = await this.clubService.findAll();
-    return clubs as ClubResponseDto[];
+    return clubs.map((club) => ClubResponseDto.fromDomain(club));
   }
 
   @Get(':id')
@@ -54,7 +44,7 @@ export class ClubController {
   @ApiResponse({ status: 404, description: 'Club not found' })
   async findOne(@Param('id') id: string): Promise<ClubResponseDto> {
     const club = await this.clubService.findByIdOrFail(id);
-    return club as ClubResponseDto;
+    return ClubResponseDto.fromDomain(club);
   }
 
   @Put(':id')
@@ -64,12 +54,9 @@ export class ClubController {
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   @ApiResponse({ status: 404, description: 'Club not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateClubDto: UpdateClubDto,
-  ): Promise<ClubResponseDto> {
+  async update(@Param('id') id: string, @Body() updateClubDto: UpdateClubDto): Promise<ClubResponseDto> {
     const club = await this.clubService.update(id, updateClubDto);
-    return club as ClubResponseDto;
+    return ClubResponseDto.fromDomain(club);
   }
 
   @Delete(':id')
@@ -83,4 +70,3 @@ export class ClubController {
     await this.clubService.delete(id);
   }
 }
-

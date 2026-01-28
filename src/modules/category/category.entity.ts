@@ -10,6 +10,8 @@ import {
 
 import { Discipline, CategoryGender, BeltLevel } from '~common/enums';
 
+import { numericTransformer } from '~database/transformers/numeric.transformer';
+
 import { Bracket } from '../bracket/bracket.entity';
 import { Registration } from '../registration/registration.entity';
 import { Tournament } from '../tournament/tournament.entity';
@@ -38,10 +40,22 @@ export class Category {
   @Column({ type: 'int' })
   ageMax!: number;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   weightMin!: number | null;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   weightMax!: number | null;
 
   @Column({ type: 'enum', enum: BeltLevel })

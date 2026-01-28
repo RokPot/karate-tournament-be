@@ -30,11 +30,8 @@ export class Tournament {
   @Column({ type: 'varchar', length: 255 })
   location!: string;
 
-  @Column({ type: 'date' })
-  date!: Date;
-
-  @Column({ type: 'time' })
-  startTime!: string;
+  @Column({ type: 'timestamp' })
+  startDate!: Date;
 
   @Column({ type: 'timestamp' })
   registrationDeadline!: Date;

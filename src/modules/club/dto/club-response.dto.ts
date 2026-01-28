@@ -42,15 +42,19 @@ export class ClubResponseDto {
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-01T00:00:00.000Z',
+    type: String,
+    format: 'date-time',
   })
-  createdAt!: Date;
+  createdAt!: string;
 
   @Expose()
   @ApiProperty({
     description: 'Last update timestamp',
     example: '2024-01-01T00:00:00.000Z',
+    type: String,
+    format: 'date-time',
   })
-  updatedAt!: Date;
+  updatedAt!: string;
 
   constructor(data: IClubResponseDto) {
     Object.assign(this, data);
@@ -65,8 +69,8 @@ export class ClubResponseDto {
       name: club.name,
       address: club.address,
       country: club.country,
-      createdAt: club.createdAt,
-      updatedAt: club.updatedAt,
+      createdAt: club.createdAt instanceof Date ? club.createdAt.toISOString() : String(club.createdAt || ''),
+      updatedAt: club.updatedAt instanceof Date ? club.updatedAt.toISOString() : String(club.updatedAt || ''),
     });
   }
 }

@@ -62,9 +62,11 @@ export class UserResponseDto {
   @ApiPropertyOptional({
     description: 'Birth date',
     example: '1990-01-01',
+    type: String,
+    format: 'date',
     nullable: true,
   })
-  birthDate!: Date | null;
+  birthDate!: string | null;
 
   @Expose()
   @ApiPropertyOptional({
@@ -105,15 +107,19 @@ export class UserResponseDto {
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-01T00:00:00.000Z',
+    type: String,
+    format: 'date-time',
   })
-  createdAt!: Date;
+  createdAt!: string;
 
   @Expose()
   @ApiProperty({
     description: 'Last update timestamp',
     example: '2024-01-01T00:00:00.000Z',
+    type: String,
+    format: 'date-time',
   })
-  updatedAt!: Date;
+  updatedAt!: string;
 
   constructor(data: IUserResponseDto) {
     Object.assign(this, data);
@@ -130,13 +136,14 @@ export class UserResponseDto {
       firstName: user.firstName,
       lastName: user.lastName,
       gender: user.gender,
-      birthDate: user.birthDate,
-      weight: user.weight,
+      birthDate:
+        user.birthDate instanceof Date ? user.birthDate.toISOString() : user.birthDate ? String(user.birthDate) : null,
+      weight: user.weight != null && typeof user.weight === 'string' ? parseFloat(user.weight) : user.weight,
       beltLevel: user.beltLevel,
       roles: user.roles,
       club: user.club ? ClubResponseDto.fromDomain(user.club) : null,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt || ''),
+      updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : String(user.updatedAt || ''),
     });
   }
 }
