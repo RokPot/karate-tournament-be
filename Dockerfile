@@ -17,6 +17,7 @@ ENV NODE_OPTIONS=$NODE_OPTIONS
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 COPY scripts /app/scripts
+RUN chmod +x /app/scripts/execute.sh
 RUN corepack enable && ./scripts/execute.sh docker-install
 
 COPY package.json yarn.lock .yarnrc.yml nest-cli.json /app/
@@ -37,6 +38,9 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # copy sources and dependencies
 COPY . /app
+
+# ensure script is executable (COPY may not preserve execute bit on Windows)
+RUN chmod +x /app/scripts/execute.sh
 
 # install all packages
 RUN yarn install --immutable
