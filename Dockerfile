@@ -64,7 +64,6 @@ RUN yarn workspaces focus --production
 
 # copy the built application
 COPY --from=build /app/dist /app/dist
-COPY --from=build /app/node_modules/.prisma /app/node_modules/.prisma
 COPY .config /app/.config
 
 EXPOSE 3000
