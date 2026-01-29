@@ -1,0 +1,66 @@
+## Configuration for STAGE=railway (Railway deploy)
+##  All secrets and URLs come from Railway env vars (no bootstrap).
+##
+##  In Railway dashboard set:
+##    STAGE=railway
+##    DATABASE_URL=postgresql://...   (Railway Postgres provides this)
+##    AUTH0_DOMAIN=your-tenant.auth0.com
+##    AUTH0_CLIENT_ID=...
+##    AUTH0_CLIENT_SECRET=...
+##    AUTH0_AUDIENCE=https://api.your-app.com
+##  Optional: WEB_BASE_URL, API_BASE_URL, RELEASE, WEBSOCKET_SERVER_URL
+##  PORT is set automatically by Railway.
+
+core:
+  stage: railway
+  release: ${env:RELEASE}
+  webBaseUrl: ${env:WEB_BASE_URL}
+  apiBaseUrl: ${env:API_BASE_URL}
+  service: lossdog-be
+
+http:
+  log: true
+  port: ${env:PORT}
+  host: 0.0.0.0
+  validateResponse: warn
+  cors:
+    origin: true
+    maxAge: 3600
+  openapi:
+    mode: runtime
+    path: docs
+    title: LossDog Backend
+    description: LossDog Backend
+    username: admin
+    password: admin
+  pagination:
+    limitMin: 1
+    limitMax: 100
+    limitDefault: 10
+
+logger:
+  output: json
+  level: debug
+  contexts:
+    InstanceLoader: warn
+    RouterExplorer: warn
+  sentry:
+    dsn: false
+    level: error
+
+database:
+  url: ${env:DATABASE_URL}
+  ssl: true
+  synchronize: false
+  autoMigrate: true
+  logging: false
+
+auth0:
+  domain: ${env:AUTH0_DOMAIN}
+  clientId: ${env:AUTH0_CLIENT_ID}
+  clientSecret: ${env:AUTH0_CLIENT_SECRET}
+  audience: ${env:AUTH0_AUDIENCE}
+
+websocket:
+  socketio:
+    serverUrl: ${env:WEBSOCKET_SERVER_URL}

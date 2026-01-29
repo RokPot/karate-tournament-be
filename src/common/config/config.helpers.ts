@@ -27,6 +27,32 @@ function merge(target: any, source: any, options: MergeOptions): any {
   return target;
 }
 
+const ENV_REF_REGEX = /\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+/**
+ * Recursively replace ${env:VAR_NAME} placeholders with process.env values.
+ * Used for Railway and other env-only config (no bootstrap).
+ */
+function resolveEnvRefs(obj: unknown): unknown {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (typeof obj === 'string') {
+    return obj.replace(ENV_REF_REGEX, (_, name) => process.env[name] ?? '');
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => resolveEnvRefs(item));
+  }
+  if (isPlainObject(obj)) {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(obj as object)) {
+      out[key] = resolveEnvRefs((obj as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return obj;
+}
+
 /**
  * Load the raw config from the filesystem
  * do not use directly, use loadConfig with a typed config instead
@@ -35,6 +61,8 @@ function merge(target: any, source: any, options: MergeOptions): any {
  * - .config/${moduleName}.resolved.yml - generated on bootstrap
  * - .config/${moduleName}.yml - legacy
  * - .config/${moduleName}.override.yml - manually created and edited
+ *
+ * String values matching ${env:VAR_NAME} are replaced with process.env at runtime.
  */
 export function readConfig(options: { moduleName: string; directory: string }): Record<string, any> {
   let config = {};
@@ -53,5 +81,5 @@ export function readConfig(options: { moduleName: string; directory: string }): 
   if (Object.keys(config).length < 1) {
     throw new Error(`No config or fallback found: ${options.directory}${options.moduleName}.[resolved|override].yml`);
   }
-  return config;
+  return resolveEnvRefs(config) as Record<string, any>;
 }

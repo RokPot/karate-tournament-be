@@ -46,31 +46,3 @@ auth0:
   clientId: test-client-id
   clientSecret: test-client-secret
   audience: https://api.tournament-app.com
-
-
-bls:
-  api:
-    apiKey: 'fake-key'
-    baseUrl: 'https://api.bls.gov'
-
-automationTesting:
-  enableAutomationEndpoints: false
-
-personas:
-  defaultPassword: ''
-
-
-stripe:
-  enabled: true
-  secretKey: ChangeMe
-  webhookSecret: ChangeMe
-
-userSubscription:
-  paywallEnabled: false
-  premiumProductId: ChangeMe
-
-app:
-  business:
-    baseUrl: https://biz.dev.lossdog.com
-  individuals:
-    baseUrl: https://dev.lossdog.com

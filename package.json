@@ -23,6 +23,7 @@
     "migration:generate": "yarn typeorm migration:generate -d src/database/data-source.ts src/database/migrations/migration",
     "migration:create": "yarn typeorm migration:create",
     "migration:run": "yarn typeorm migration:run -d src/database/data-source.ts",
+    "migration:run:prod": "node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
     "migration:revert": "yarn typeorm migration:revert -d src/database/data-source.ts"
   },
   "dependencies": {

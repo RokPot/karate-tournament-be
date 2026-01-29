@@ -74,42 +74,5 @@ websocket:
   socketio:
     serverUrl: http://${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/redis/address}
 
-fred:
-  stlouis:
-    apiKey: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/stlouis-fred/api-key}
-    baseUrl: 'https://api.stlouisfed.org/fred'
-
-bls:
-  api:
-    apiKey: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/bls/api-key}
-    baseUrl: 'https://api.bls.gov'
-
-automationTesting:
-  enableAutomationEndpoints: true
-  allowedDomains:
-    - playwright-testing.com
-  allowedEmails:
-    - astrit.zeqiri@povio.com
-    - admin@lossdog.com
-
-personas:
-  defaultPassword: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/personas/defaultPassword}
-
-
-stripe:
-  enabled: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/stripe/enabled}
-  secretKey: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/stripe/secret-key}
-  webhookSecret: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/stripe/webhook-secret}
-
-userSubscription:
-  paywallEnabled: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/user-subscription/paywall-enabled}
-  premiumProductId: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/user-subscription/premium-product-id}
-
 worthCalculation:
   alternativeRunEnabled: true
-
-app:
-  business:
-    baseUrl: https://biz.dev.lossdog.com
-  individuals:
-    baseUrl: https://dev.lossdog.com
