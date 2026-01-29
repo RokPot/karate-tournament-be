@@ -22,7 +22,6 @@ RUN corepack enable && ./scripts/execute.sh docker-install
 
 COPY package.json yarn.lock .yarnrc.yml nest-cli.json /app/
 COPY resources/ /app/resources
-COPY packages /app/packages
 
 FROM base AS build
 
