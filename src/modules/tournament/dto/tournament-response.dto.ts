@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
+import { ClubResponseDto } from '../../club/dto/club-response.dto';
 import { UserResponseDto } from '../../user/dto/user-response.dto';
 import { Tournament } from '../tournament.entity';
 
@@ -65,6 +66,23 @@ export class TournamentResponseDto {
   createdByUser!: UserResponseDto | null;
 
   @Expose()
+  @ApiPropertyOptional({
+    description: 'Club ID assigned to the tournament',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  clubId!: string | null;
+
+  @Expose()
+  @Type(() => ClubResponseDto)
+  @ApiPropertyOptional({
+    description: 'Club assigned to the tournament',
+    type: ClubResponseDto,
+    nullable: true,
+  })
+  club!: ClubResponseDto | null;
+
+  @Expose()
   @ApiProperty({
     description: 'Category IDs associated with this tournament',
     type: [String],
@@ -110,6 +128,8 @@ export class TournamentResponseDto {
           : String(tournament.registrationDeadline || ''),
       createdBy: tournament.createdBy,
       createdByUser: tournament.createdByUser ? UserResponseDto.fromDomain(tournament.createdByUser) : null,
+      clubId: tournament.clubId ?? null,
+      club: tournament.club ? ClubResponseDto.fromDomain(tournament.club) : null,
       categoryIds: tournament.categories ? tournament.categories.map((cat) => cat.id) : [],
       createdAt:
         tournament.createdAt instanceof Date ? tournament.createdAt.toISOString() : String(tournament.createdAt || ''),

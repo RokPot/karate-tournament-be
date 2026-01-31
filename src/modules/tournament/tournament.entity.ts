@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 
 import { Category } from '../category/category.entity';
+import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { User } from '../user/user.entity';
 
@@ -39,6 +40,9 @@ export class Tournament {
   @Column({ type: 'uuid' })
   createdBy!: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  clubId!: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
 
@@ -49,6 +53,10 @@ export class Tournament {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'createdBy' })
   createdByUser!: User;
+
+  @ManyToOne(() => Club, (club) => club.tournaments, { nullable: true })
+  @JoinColumn({ name: 'clubId' })
+  club!: Club | null;
 
   @ManyToMany(() => Category, (category) => category.tournaments)
   @JoinTable({

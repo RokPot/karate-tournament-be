@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsUUID, MaxLength, ValidateIf } from 'class-validator';
 
 /**
  * Update Tournament DTO
@@ -52,4 +52,16 @@ export class UpdateTournamentDto {
   @IsOptional()
   @IsString()
   registrationDeadline?: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Club ID to assign to the tournament (null to unassign)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    format: 'uuid',
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null && v !== '')
+  @IsUUID('4')
+  clubId?: string | null;
 }

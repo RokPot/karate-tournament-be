@@ -1,14 +1,8 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 
-import { User } from '../user/user.entity';
 import { Registration } from '../registration/registration.entity';
+import type { Tournament } from '../tournament/tournament.entity';
+import { User } from '../user/user.entity';
 
 /**
  * Club Entity
@@ -40,5 +34,7 @@ export class Club {
 
   @OneToMany(() => Registration, (registration) => registration.club)
   registrations!: Registration[];
-}
 
+  @OneToMany('Tournament', (tournament: any) => tournament.club)
+  tournaments!: Tournament[];
+}

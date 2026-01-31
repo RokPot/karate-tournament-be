@@ -1,6 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+
+import { Category } from '../category/category.entity';
+import { Club } from '../club/club.entity';
 
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
@@ -17,6 +20,10 @@ export class TournamentService {
   constructor(
     @InjectRepository(Tournament)
     private readonly tournamentRepository: Repository<Tournament>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Club)
+    private readonly clubRepository: Repository<Club>,
   ) {}
 
   /**
@@ -27,12 +34,20 @@ export class TournamentService {
     const startDate = new Date(data.startDate);
     const registrationDeadline = new Date(data.registrationDeadline);
 
+    if (data.clubId) {
+      const club = await this.clubRepository.findOne({ where: { id: data.clubId } });
+      if (!club) {
+        throw new NotFoundException(`Club with ID ${data.clubId} not found`);
+      }
+    }
+
     const tournament = this.tournamentRepository.create({
       name: data.name,
       location: data.location,
       startDate,
       registrationDeadline,
       createdBy: createdByUserId,
+      clubId: data.clubId ?? null,
     });
 
     try {
@@ -52,7 +67,7 @@ export class TournamentService {
    */
   async findAll(): Promise<Tournament[]> {
     return this.tournamentRepository.find({
-      relations: ['createdByUser', 'categories'],
+      relations: ['createdByUser', 'categories', 'club'],
       order: { startDate: 'ASC', createdAt: 'DESC' },
     });
   }
@@ -63,7 +78,7 @@ export class TournamentService {
   async findById(id: string): Promise<Tournament | null> {
     return this.tournamentRepository.findOne({
       where: { id },
-      relations: ['createdByUser', 'categories'],
+      relations: ['createdByUser', 'categories', 'club'],
     });
   }
 
@@ -98,6 +113,16 @@ export class TournamentService {
     if (data.name !== undefined) tournament.name = data.name;
     if (data.location !== undefined) tournament.location = data.location;
 
+    if (data.clubId !== undefined) {
+      if (data.clubId != null && data.clubId !== '') {
+        const club = await this.clubRepository.findOne({ where: { id: data.clubId } });
+        if (!club) {
+          throw new NotFoundException(`Club with ID ${data.clubId} not found`);
+        }
+      }
+      tournament.clubId = data.clubId ?? null;
+    }
+
     return this.tournamentRepository.save(tournament);
   }
 
@@ -108,5 +133,45 @@ export class TournamentService {
     const tournament = await this.findByIdOrFail(id);
     await this.tournamentRepository.remove(tournament);
     this.logger.log(`Deleted tournament: ${id}`);
+  }
+
+  /**
+   * Assign categories to a tournament. Replaces all currently assigned categories.
+   * Any categories previously assigned but not in categoryIds are unassigned.
+   */
+  async assignCategories(tournamentId: string, categoryIds: string[]): Promise<Tournament> {
+    const tournament = await this.tournamentRepository.findOne({
+      where: { id: tournamentId },
+      relations: ['categories'],
+    });
+
+    if (!tournament) {
+      throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
+    }
+
+    if (categoryIds.length === 0) {
+      tournament.categories = [];
+      const saved = await this.tournamentRepository.save(tournament);
+      this.logger.log(`Unassigned all categories from tournament ${tournamentId}`);
+      return saved;
+    }
+
+    const categories = await this.categoryRepository.find({
+      where: { id: In(categoryIds) },
+    });
+
+    const foundIds = new Set(categories.map((c) => c.id));
+    const missingIds = categoryIds.filter((id) => !foundIds.has(id));
+    if (missingIds.length > 0) {
+      throw new BadRequestException(`Category IDs not found: ${missingIds.join(', ')}`);
+    }
+
+    // Preserve order of categoryIds
+    const orderMap = new Map(categoryIds.map((id, i) => [id, i]));
+    tournament.categories = categories.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+
+    const saved = await this.tournamentRepository.save(tournament);
+    this.logger.log(`Assigned ${categoryIds.length} category(ies) to tournament ${tournamentId}`);
+    return saved;
   }
 }

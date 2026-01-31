@@ -1,17 +1,20 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { Category } from '../category/category.entity';
+import { Club } from '../club/club.entity';
 import { User } from '../user/user.entity';
+
+import { TournamentController } from './tournament.controller';
 import { Tournament } from './tournament.entity';
 import { TournamentService } from './tournament.service';
-import { TournamentController } from './tournament.controller';
 
 /**
  * Tournament Module
  * Manages tournament entities and operations.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Tournament, User])],
+  imports: [TypeOrmModule.forFeature([Tournament, Category, Club, User])],
   controllers: [TournamentController],
   providers: [TournamentService],
   exports: [TournamentService, TypeOrmModule],

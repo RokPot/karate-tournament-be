@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@ne
 import { CurrentUserEntity } from '../user/user.decorators';
 import { User } from '../user/user.entity';
 import { TournamentService } from './tournament.service';
+import { AssignCategoriesDto } from './dto/assign-categories.dto';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentResponseDto } from './dto/tournament-response.dto';
@@ -71,6 +72,31 @@ export class TournamentController {
   async findOne(@Param('id') id: string): Promise<TournamentResponseDto> {
     const tournament = await this.tournamentService.findByIdOrFail(id);
     return TournamentResponseDto.fromDomain(tournament);
+  }
+
+  @Put(':id/categories')
+  @ApiOperation({
+    summary: 'Assign categories to tournament',
+    description:
+      'Sets the tournament\'s categories to the given list. Any previously assigned categories not in the list are unassigned.',
+  })
+  @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Categories assigned successfully', type: TournamentResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - invalid or unknown category IDs' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 404, description: 'Tournament not found' })
+  async assignCategories(
+    @Param('id') id: string,
+    @Body() assignCategoriesDto: AssignCategoriesDto,
+  ): Promise<TournamentResponseDto> {
+    const tournament = await this.tournamentService.assignCategories(id, assignCategoriesDto.categoryIds);
+    const fullTournament = await this.tournamentService.findById(tournament.id);
+
+    if (!fullTournament) {
+      throw new NotFoundException('Tournament not found after assigning categories');
+    }
+
+    return TournamentResponseDto.fromDomain(fullTournament);
   }
 
   @Put(':id')
