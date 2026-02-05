@@ -1,7 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
+import { TournamentResponseDto } from '../tournament/dto/tournament-response.dto';
+import { UserResponseDto } from '../user/dto/user-response.dto';
+
 import { ClubService } from './club.service';
+import { AddMemberDto } from './dto/add-member.dto';
 import { ClubResponseDto } from './dto/club-response.dto';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
@@ -18,13 +22,17 @@ export class ClubController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new club', description: 'Creates a new karate club' })
+  @ApiOperation({
+    summary: 'Create a new club',
+    description:
+      'Creates a new karate club. When ownerEmail is provided, an invitation is created and inviteUrl is returned.',
+  })
   @ApiResponse({ status: 201, description: 'Club created successfully', type: ClubResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   async create(@Body() createClubDto: CreateClubDto): Promise<ClubResponseDto> {
-    const club = await this.clubService.create(createClubDto);
-    return ClubResponseDto.fromDomain(club);
+    const { club, inviteUrl } = await this.clubService.create(createClubDto);
+    return ClubResponseDto.fromDomain(club, inviteUrl);
   }
 
   @Get()
@@ -34,6 +42,45 @@ export class ClubController {
   async findAll(): Promise<ClubResponseDto[]> {
     const clubs = await this.clubService.findAll();
     return clubs.map((club) => ClubResponseDto.fromDomain(club));
+  }
+
+  @Post(':id/members')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Add a member to the club',
+    description:
+      'Creates a new user (without Auth0) and adds them to the club with the given role. The user can be linked to Auth0 later.',
+  })
+  @ApiParam({ name: 'id', description: 'Club ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 201, description: 'Member created and added to club', type: UserResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 404, description: 'Club not found' })
+  async addMember(@Param('id') id: string, @Body() addMemberDto: AddMemberDto): Promise<UserResponseDto> {
+    const user = await this.clubService.addMember(id, addMemberDto);
+    return UserResponseDto.fromDomain(user);
+  }
+
+  @Get(':id/members')
+  @ApiOperation({ summary: 'Get club members', description: 'Retrieves users (members) of the club' })
+  @ApiParam({ name: 'id', description: 'Club ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'List of club members', type: [UserResponseDto] })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 404, description: 'Club not found' })
+  async getMembers(@Param('id') id: string): Promise<UserResponseDto[]> {
+    const users = await this.clubService.getMembers(id);
+    return users.map((user) => UserResponseDto.fromDomain(user));
+  }
+
+  @Get(':id/tournaments')
+  @ApiOperation({ summary: 'Get club tournaments', description: 'Retrieves tournaments assigned to the club' })
+  @ApiParam({ name: 'id', description: 'Club ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'List of tournaments', type: [TournamentResponseDto] })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 404, description: 'Club not found' })
+  async getTournaments(@Param('id') id: string): Promise<TournamentResponseDto[]> {
+    const tournaments = await this.clubService.getTournaments(id);
+    return tournaments.map((tournament) => TournamentResponseDto.fromDomain(tournament));
   }
 
   @Get(':id')

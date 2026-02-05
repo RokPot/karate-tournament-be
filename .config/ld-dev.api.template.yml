@@ -64,6 +64,9 @@ database:
   autoMigrate: true
   logging: false
 
+invitation:
+  frontendBaseUrl: ${env:WEB_BASE_URL}
+
 auth0:
   domain: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/auth0/domain}
   clientId: ${arn:aws:ssm:us-east-1:872515261725:parameter/ld-dev/api/auth0/client-id}

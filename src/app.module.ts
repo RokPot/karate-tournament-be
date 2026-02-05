@@ -13,6 +13,7 @@ import { DatabaseModule } from '~database';
 
 import { CategoryModule } from '~modules/category/category.module';
 import { ClubModule } from '~modules/club/club.module';
+import { InvitationModule } from '~modules/invitation/invitation.module';
 import { RegistrationModule } from '~modules/registration/registration.module';
 import { TestModule } from '~modules/test/test.module';
 import { TournamentModule } from '~modules/tournament/tournament.module';
@@ -35,6 +36,7 @@ import { UserModule } from '~modules/user/user.module';
     // modules
     UserModule,
     ClubModule,
+    InvitationModule,
     RegistrationModule,
     TournamentModule,
     CategoryModule,

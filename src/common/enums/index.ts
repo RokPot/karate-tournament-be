@@ -31,11 +31,11 @@ export enum BeltLevel {
 
 export enum UserRole {
   ADMIN = 'admin',
-  ORGANIZER = 'organizer',
-  COACH = 'coach',
-  COMPETITOR = 'competitor',
+  CLUB_OWNER = 'club_owner',
+  CLUB_MEMBER = 'club_member',
+  CLUB_COACH = 'club_coach',
+  FREE_MEMBER = 'free_member',
   JUDGE = 'judge',
-  STAFF = 'staff',
 }
 
 export enum Discipline {
@@ -53,4 +53,11 @@ export enum RegistrationStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+}
+
+export enum InvitationStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  EXPIRED = 'expired',
+  CANCELLED = 'cancelled',
 }

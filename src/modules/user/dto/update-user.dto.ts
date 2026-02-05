@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsString, IsOptional, IsEnum, IsNumber, IsArray, MaxLength, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, IsArray, MaxLength, Min, Max, IsEmail } from 'class-validator';
 
 import { Gender, BeltLevel, UserRole } from '~common/enums';
 
@@ -30,6 +30,17 @@ export class UpdateUserDto {
   @IsString()
   @MaxLength(100)
   lastName?: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Email',
+    example: 'user@example.com',
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  email?: string;
 
   @Expose()
   @ApiPropertyOptional({
@@ -82,7 +93,7 @@ export class UpdateUserDto {
     description: 'User roles',
     enum: UserRole,
     isArray: true,
-    example: [UserRole.COMPETITOR, UserRole.COACH],
+    example: [UserRole.CLUB_MEMBER, UserRole.CLUB_COACH],
   })
   @IsOptional()
   @IsArray()
