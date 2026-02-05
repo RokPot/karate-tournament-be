@@ -40,6 +40,13 @@ export class ClubResponseDto {
 
   @Expose()
   @ApiProperty({
+    description: 'Number of members (users) in the club',
+    example: 42,
+  })
+  membersCount!: number;
+
+  @Expose()
+  @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-01T00:00:00.000Z',
     type: String,
@@ -56,6 +63,14 @@ export class ClubResponseDto {
   })
   updatedAt!: string;
 
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Invite URL for club owner (present only when club was created with ownerEmail)',
+    example: 'http://localhost:8000/invite/abc123',
+    nullable: true,
+  })
+  inviteUrl!: string | null;
+
   constructor(data: IClubResponseDto) {
     Object.assign(this, data);
   }
@@ -63,14 +78,16 @@ export class ClubResponseDto {
   /**
    * Creates a ClubResponseDto instance from a Club entity
    */
-  static fromDomain(club: Club): ClubResponseDto {
+  static fromDomain(club: Club, inviteUrl?: string | null): ClubResponseDto {
     return new ClubResponseDto({
       id: club.id,
       name: club.name,
       address: club.address,
       country: club.country,
+      membersCount: club.membersCount ?? 0,
       createdAt: club.createdAt instanceof Date ? club.createdAt.toISOString() : String(club.createdAt || ''),
       updatedAt: club.updatedAt instanceof Date ? club.updatedAt.toISOString() : String(club.updatedAt || ''),
+      inviteUrl: inviteUrl ?? null,
     });
   }
 }

@@ -1,9 +1,12 @@
+import { randomUUID } from 'crypto';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Auth0Payload } from '~common/auth';
 
+import { CreateUserWithoutAuth0Dto } from './dto/create-user-without-auth0.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.entity';
 
@@ -99,6 +102,29 @@ export class UserService {
   }
 
   /**
+   * Create a user without Auth0 (e.g. club member added by owner).
+   * Uses placeholder auth0Id so the user can be linked to Auth0 later.
+   */
+  async createWithoutAuth0(data: CreateUserWithoutAuth0Dto): Promise<User> {
+    const auth0Id = `pending:${randomUUID()}`;
+    const user = this.userRepository.create({
+      auth0Id,
+      clubId: data.clubId,
+      roles: data.roles,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email ?? null,
+      gender: data.gender,
+      birthDate: new Date(data.birthDate),
+      weight: data.weight ?? null,
+      beltLevel: data.beltLevel,
+    });
+    const saved = await this.userRepository.save(user);
+    this.logger.log(`Created user without Auth0: ${saved.id} (clubId: ${data.clubId})`);
+    return saved;
+  }
+
+  /**
    * Update user profile
    */
   async update(id: string, data: UpdateUserDto): Promise<User> {
@@ -107,6 +133,7 @@ export class UserService {
 
     if (data.firstName !== undefined) updateData.firstName = data.firstName || null;
     if (data.lastName !== undefined) updateData.lastName = data.lastName || null;
+    if (data.email !== undefined) updateData.email = data.email || null;
     if (data.gender !== undefined) updateData.gender = data.gender || null;
     if (data.birthDate !== undefined) {
       updateData.birthDate = data.birthDate ? new Date(data.birthDate) : null;

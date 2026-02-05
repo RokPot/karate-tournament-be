@@ -42,6 +42,9 @@ export class User {
   @Column({ type: 'varchar', length: 100, nullable: true })
   lastName!: string | null;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  email!: string | null;
+
   @Column({ type: 'enum', enum: Gender, nullable: true })
   gender!: Gender | null;
 

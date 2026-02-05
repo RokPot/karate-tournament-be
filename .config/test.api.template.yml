@@ -41,6 +41,9 @@ database:
   autoMigrate: false
   logging: false
 
+invitation:
+  frontendBaseUrl: 'http://localhost:8000'
+
 auth0:
   domain: your-tenant.auth0.com
   clientId: test-client-id

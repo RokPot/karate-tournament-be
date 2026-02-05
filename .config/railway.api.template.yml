@@ -55,6 +55,9 @@ database:
   autoMigrate: true
   logging: false
 
+invitation:
+  frontendBaseUrl: ${env:WEB_BASE_URL}
+
 auth0:
   domain: ${env:AUTH0_DOMAIN}
   clientId: ${env:AUTH0_CLIENT_ID}

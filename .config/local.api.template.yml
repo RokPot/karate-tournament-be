@@ -63,6 +63,9 @@ database:
   autoMigrate: false
   logging: true
 
+invitation:
+  frontendBaseUrl: 'http://localhost:3000'
+
 auth0:
   domain: dev-roky.eu.auth0.com
   clientId: JIZIYl0F3z7rARQZ92Wc3ySg2KFyS1gx

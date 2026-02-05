@@ -32,9 +32,13 @@ export class Club {
   @OneToMany(() => User, (user) => user.club)
   users!: User[];
 
+  // todo rokpot, is this relation here needed?
   @OneToMany(() => Registration, (registration) => registration.club)
   registrations!: Registration[];
 
   @OneToMany('Tournament', (tournament: any) => tournament.club)
   tournaments!: Tournament[];
+
+  /** Set by loadRelationCountAndMap when loading list; not a DB column. */
+  membersCount?: number;
 }

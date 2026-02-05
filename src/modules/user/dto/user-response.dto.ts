@@ -51,6 +51,14 @@ export class UserResponseDto {
 
   @Expose()
   @ApiPropertyOptional({
+    description: 'Email (for display and future Auth0 linking)',
+    example: 'member@example.com',
+    nullable: true,
+  })
+  email!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
     description: 'Gender',
     enum: Gender,
     example: Gender.MALE,
@@ -90,7 +98,7 @@ export class UserResponseDto {
     description: 'User roles',
     enum: UserRole,
     isArray: true,
-    example: [UserRole.COMPETITOR],
+    example: [UserRole.CLUB_MEMBER],
   })
   roles!: UserRole[];
 
@@ -135,6 +143,7 @@ export class UserResponseDto {
       clubId: user.clubId,
       firstName: user.firstName,
       lastName: user.lastName,
+      email: user.email,
       gender: user.gender,
       birthDate:
         user.birthDate instanceof Date ? user.birthDate.toISOString() : user.birthDate ? String(user.birthDate) : null,
