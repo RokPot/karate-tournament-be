@@ -1,8 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsString, IsOptional, IsEnum, IsNumber, IsArray, MaxLength, Min, Max, IsEmail } from 'class-validator';
+import { IsArray, IsEmail, IsEnum, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
-import { Gender, BeltLevel, UserRole } from '~common/enums';
+import { BeltLevel, Gender, UserRole } from '~common/enums';
+import { ApiDateOnlyPropertyOptional } from '~common/swagger/api-date.decorators';
+import { IsDateOfBirth } from '~common/validate';
 
 /**
  * Update User DTO
@@ -53,16 +55,10 @@ export class UpdateUserDto {
   gender?: Gender;
 
   @Expose()
-  @ApiPropertyOptional({
-    description: 'Birth date',
-    example: '1990-01-01',
-    type: String,
-    format: 'date',
-    nullable: true,
-  })
+  @ApiDateOnlyPropertyOptional({ description: 'Date of birth', example: '7.7.2000', nullable: true })
   @IsOptional()
-  @IsString()
-  birthDate?: string | null;
+  @IsDateOfBirth()
+  dateOfBirth?: string | null;
 
   @Expose()
   @ApiPropertyOptional({
@@ -82,7 +78,7 @@ export class UpdateUserDto {
   @ApiPropertyOptional({
     description: 'Belt level',
     enum: BeltLevel,
-    example: BeltLevel.BLACK,
+    example: BeltLevel.DAN_1,
   })
   @IsOptional()
   @IsEnum(BeltLevel)

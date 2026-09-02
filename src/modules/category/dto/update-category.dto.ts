@@ -1,17 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import {
-  IsString,
-  IsEnum,
-  IsArray,
-  IsNumber,
-  IsInt,
-  IsOptional,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsString, IsEnum, IsNumber, IsInt, IsOptional, MaxLength, Min, ValidateIf } from 'class-validator';
 
-import { Discipline, CategoryGender, BeltLevel } from '~common/enums';
+import { Discipline, SubDiscipline, CategoryGender, BeltLevel } from '~common/enums';
 
 /**
  * Update Category DTO
@@ -33,7 +24,7 @@ export class UpdateCategoryDto {
   @ApiPropertyOptional({
     description: 'Discipline',
     enum: Discipline,
-    example: Discipline.KUMITE,
+    example: Discipline.YAKO_SOKU_KUMITE,
   })
   @IsOptional()
   @IsEnum(Discipline)
@@ -41,81 +32,133 @@ export class UpdateCategoryDto {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Gender categories',
-    enum: CategoryGender,
-    isArray: true,
-    example: [CategoryGender.MALE],
+    description: 'Sub-discipline (null = not specified)',
+    enum: SubDiscipline,
+    example: SubDiscipline.GOHON_IPPON_KUMITE,
+    nullable: true,
   })
   @IsOptional()
-  @IsArray()
-  @IsEnum(CategoryGender, { each: true })
-  gender?: CategoryGender[];
+  @ValidateIf((_o, v) => v != null)
+  @IsEnum(SubDiscipline)
+  subDiscipline?: SubDiscipline | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Minimum age',
+    description: 'Category gender (null = no gender restriction)',
+    enum: CategoryGender,
+    example: CategoryGender.MALE,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @IsEnum(CategoryGender)
+  gender?: CategoryGender | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Minimum age in years (0 = no lower limit). Nullable.',
     example: 18,
     minimum: 0,
+    nullable: true,
   })
   @IsOptional()
+  @ValidateIf((_o, v) => v != null)
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  ageMin?: number;
+  ageMin?: number | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Maximum age',
+    description: 'Maximum age in years (0 = no upper limit). Nullable.',
     example: 35,
     minimum: 0,
+    nullable: true,
   })
   @IsOptional()
+  @ValidateIf((_o, v) => v != null)
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  ageMax?: number;
+  ageMax?: number | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Minimum weight in kg',
+    description: 'Minimum weight in kg (0 = no lower limit). Nullable.',
     example: 70.0,
     minimum: 0,
+    nullable: true,
   })
   @IsOptional()
+  @ValidateIf((_o, v) => v != null)
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  weightMin?: number;
+  weightMin?: number | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Maximum weight in kg',
+    description: 'Maximum weight in kg (0 = no upper limit). Nullable.',
     example: 75.0,
     minimum: 0,
+    nullable: true,
   })
   @IsOptional()
+  @ValidateIf((_o, v) => v != null)
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  weightMax?: number;
+  weightMax?: number | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Minimum belt level',
+    description: 'Minimum belt level (null = no lower limit)',
     enum: BeltLevel,
-    example: BeltLevel.BROWN,
+    example: BeltLevel.KYU_4,
+    nullable: true,
   })
   @IsOptional()
+  @ValidateIf((_o, v) => v != null)
   @IsEnum(BeltLevel)
-  beltMin?: BeltLevel;
+  beltMin?: BeltLevel | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Maximum belt level',
+    description: 'Maximum belt level (null = no upper limit)',
     enum: BeltLevel,
-    example: BeltLevel.BLACK,
+    example: BeltLevel.DAN_2,
+    nullable: true,
   })
   @IsOptional()
+  @ValidateIf((_o, v) => v != null)
   @IsEnum(BeltLevel)
-  beltMax?: BeltLevel;
+  beltMax?: BeltLevel | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Main team roster size (null = not applicable)',
+    example: 3,
+    minimum: 0,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  teamSize?: number | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Number of reserve participants allowed (null = not applicable)',
+    example: 1,
+    minimum: 0,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  teamReservesSize?: number | null;
 }

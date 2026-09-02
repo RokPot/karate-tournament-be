@@ -1,20 +1,12 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToMany,
-  OneToMany,
-} from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
-import { Discipline, CategoryGender, BeltLevel } from '~common/enums';
+import { BeltLevel, CategoryGender, Discipline, SubDiscipline } from '~common/enums';
 
 import { numericTransformer } from '~database/transformers/numeric.transformer';
 
 import { Bracket } from '../bracket/bracket.entity';
 import { Registration } from '../registration/registration.entity';
-import { Tournament } from '../tournament/tournament.entity';
+import { TournamentCategory } from '../tournament/tournament-category.entity';
 
 /**
  * Category Entity
@@ -31,14 +23,17 @@ export class Category {
   @Column({ type: 'enum', enum: Discipline })
   discipline!: Discipline;
 
-  @Column({ type: 'enum', enum: CategoryGender, array: true, default: [] })
-  gender!: CategoryGender[];
+  @Column({ type: 'enum', enum: SubDiscipline, nullable: true })
+  subDiscipline!: SubDiscipline | null;
 
-  @Column({ type: 'int' })
-  ageMin!: number;
+  @Column({ type: 'enum', enum: CategoryGender, nullable: true })
+  gender!: CategoryGender | null;
 
-  @Column({ type: 'int' })
-  ageMax!: number;
+  @Column({ type: 'int', nullable: true })
+  ageMin!: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  ageMax!: number | null;
 
   @Column({
     type: 'numeric',
@@ -58,11 +53,17 @@ export class Category {
   })
   weightMax!: number | null;
 
-  @Column({ type: 'enum', enum: BeltLevel })
-  beltMin!: BeltLevel;
+  @Column({ type: 'enum', enum: BeltLevel, nullable: true })
+  beltMin!: BeltLevel | null;
 
-  @Column({ type: 'enum', enum: BeltLevel })
-  beltMax!: BeltLevel;
+  @Column({ type: 'enum', enum: BeltLevel, nullable: true })
+  beltMax!: BeltLevel | null;
+
+  @Column({ type: 'int', nullable: true })
+  teamSize!: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  teamReservesSize!: number | null;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
@@ -71,8 +72,8 @@ export class Category {
   updatedAt!: Date;
 
   // Relations
-  @ManyToMany(() => Tournament, (tournament) => tournament.categories)
-  tournaments!: Tournament[];
+  @OneToMany(() => TournamentCategory, (tournamentAssignment) => tournamentAssignment.category)
+  tournamentAssignments!: TournamentCategory[];
 
   @OneToMany(() => Registration, (registration) => registration.category)
   registrations!: Registration[];

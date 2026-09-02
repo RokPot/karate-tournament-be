@@ -14,6 +14,8 @@ import {
 } from 'class-validator';
 
 import { Gender, BeltLevel, UserRole } from '~common/enums';
+import { ApiDateOnlyProperty } from '~common/swagger/api-date.decorators';
+import { IsDateOfBirth } from '~common/validate';
 
 /**
  * DTO for creating a user without Auth0 (e.g. club member).
@@ -66,14 +68,9 @@ export class CreateUserWithoutAuth0Dto {
   gender!: Gender;
 
   @Expose()
-  @ApiProperty({
-    description: 'Birth date',
-    example: '1990-01-01',
-    type: String,
-    format: 'date',
-  })
-  @IsString()
-  birthDate!: string;
+  @ApiDateOnlyProperty({ description: 'Date of birth', example: '7.7.2000' })
+  @IsDateOfBirth()
+  dateOfBirth!: string;
 
   @Expose()
   @ApiPropertyOptional({ description: 'Weight in kg', example: 75.5, minimum: 0, maximum: 999.99 })

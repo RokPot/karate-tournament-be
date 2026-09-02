@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+
+import { UserRole } from '~common/enums';
 
 import { TournamentResponseDto } from '../tournament/dto/tournament-response.dto';
 import { UserResponseDto } from '../user/dto/user-response.dto';
@@ -8,6 +10,7 @@ import { ClubService } from './club.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { ClubResponseDto } from './dto/club-response.dto';
 import { CreateClubDto } from './dto/create-club.dto';
+import { GetMembersQueryDto } from './dto/get-members-query.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 
 /**
@@ -62,13 +65,17 @@ export class ClubController {
   }
 
   @Get(':id/members')
-  @ApiOperation({ summary: 'Get club members', description: 'Retrieves users (members) of the club' })
+  @ApiOperation({
+    summary: 'Get club members',
+    description: 'Retrieves users (members) of the club. Optionally filter by role (query param).',
+  })
   @ApiParam({ name: 'id', description: 'Club ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiQuery({ name: 'role', required: false, enum: UserRole, description: 'Filter by member role' })
   @ApiResponse({ status: 200, description: 'List of club members', type: [UserResponseDto] })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   @ApiResponse({ status: 404, description: 'Club not found' })
-  async getMembers(@Param('id') id: string): Promise<UserResponseDto[]> {
-    const users = await this.clubService.getMembers(id);
+  async getMembers(@Param('id') id: string, @Query() query: GetMembersQueryDto): Promise<UserResponseDto[]> {
+    const users = await this.clubService.getMembers(id, query.role);
     return users.map((user) => UserResponseDto.fromDomain(user));
   }
 

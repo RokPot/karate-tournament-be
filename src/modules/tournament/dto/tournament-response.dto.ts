@@ -130,7 +130,7 @@ export class TournamentResponseDto {
       createdByUser: tournament.createdByUser ? UserResponseDto.fromDomain(tournament.createdByUser) : null,
       clubId: tournament.clubId ?? null,
       club: tournament.club ? ClubResponseDto.fromDomain(tournament.club) : null,
-      categoryIds: tournament.categories ? tournament.categories.map((cat) => cat.id) : [],
+      categoryIds: (tournament.categoryAssignments ?? []).map((assignment) => assignment.categoryId),
       createdAt:
         tournament.createdAt instanceof Date ? tournament.createdAt.toISOString() : String(tournament.createdAt || ''),
       updatedAt:

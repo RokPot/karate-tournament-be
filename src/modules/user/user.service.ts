@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Auth0Payload } from '~common/auth';
+import { parseDateOfBirth } from '~common/utils/date-only.utils';
 
 import { CreateUserWithoutAuth0Dto } from './dto/create-user-without-auth0.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -82,7 +83,7 @@ export class UserService {
       lastName,
       // Other fields remain null and can be filled later via profile update
       gender: null,
-      birthDate: null,
+      dateOfBirth: null,
       weight: null,
       beltLevel: null,
       clubId: null,
@@ -115,7 +116,7 @@ export class UserService {
       lastName: data.lastName,
       email: data.email ?? null,
       gender: data.gender,
-      birthDate: new Date(data.birthDate),
+      dateOfBirth: parseDateOfBirth(data.dateOfBirth),
       weight: data.weight ?? null,
       beltLevel: data.beltLevel,
     });
@@ -135,8 +136,8 @@ export class UserService {
     if (data.lastName !== undefined) updateData.lastName = data.lastName || null;
     if (data.email !== undefined) updateData.email = data.email || null;
     if (data.gender !== undefined) updateData.gender = data.gender || null;
-    if (data.birthDate !== undefined) {
-      updateData.birthDate = data.birthDate ? new Date(data.birthDate) : null;
+    if (data.dateOfBirth !== undefined) {
+      updateData.dateOfBirth = data.dateOfBirth ? parseDateOfBirth(data.dateOfBirth) : null;
     }
     if (data.weight !== undefined) updateData.weight = data.weight || null;
     if (data.beltLevel !== undefined) updateData.beltLevel = data.beltLevel || null;

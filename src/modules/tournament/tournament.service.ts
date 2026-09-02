@@ -7,6 +7,7 @@ import { Club } from '../club/club.entity';
 
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { TournamentCategory } from './tournament-category.entity';
 import { Tournament } from './tournament.entity';
 
 /**
@@ -20,6 +21,8 @@ export class TournamentService {
   constructor(
     @InjectRepository(Tournament)
     private readonly tournamentRepository: Repository<Tournament>,
+    @InjectRepository(TournamentCategory)
+    private readonly tournamentCategoryRepository: Repository<TournamentCategory>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Club)
@@ -67,8 +70,14 @@ export class TournamentService {
    */
   async findAll(): Promise<Tournament[]> {
     return this.tournamentRepository.find({
-      relations: ['createdByUser', 'categories', 'club'],
-      order: { startDate: 'ASC', createdAt: 'DESC' },
+      relations: ['createdByUser', 'categoryAssignments', 'categoryAssignments.category', 'club'],
+      order: {
+        startDate: 'ASC',
+        createdAt: 'DESC',
+        categoryAssignments: {
+          sortOrder: 'ASC',
+        },
+      },
     });
   }
 
@@ -78,7 +87,12 @@ export class TournamentService {
   async findById(id: string): Promise<Tournament | null> {
     return this.tournamentRepository.findOne({
       where: { id },
-      relations: ['createdByUser', 'categories', 'club'],
+      relations: ['createdByUser', 'categoryAssignments', 'categoryAssignments.category', 'club'],
+      order: {
+        categoryAssignments: {
+          sortOrder: 'ASC',
+        },
+      },
     });
   }
 
@@ -142,36 +156,49 @@ export class TournamentService {
   async assignCategories(tournamentId: string, categoryIds: string[]): Promise<Tournament> {
     const tournament = await this.tournamentRepository.findOne({
       where: { id: tournamentId },
-      relations: ['categories'],
     });
 
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
 
-    if (categoryIds.length === 0) {
-      tournament.categories = [];
-      const saved = await this.tournamentRepository.save(tournament);
-      this.logger.log(`Unassigned all categories from tournament ${tournamentId}`);
-      return saved;
+    const uniqueCategoryIds = [...new Set(categoryIds)];
+    if (uniqueCategoryIds.length !== categoryIds.length) {
+      throw new BadRequestException('Duplicate category IDs are not allowed');
     }
 
-    const categories = await this.categoryRepository.find({
-      where: { id: In(categoryIds) },
+    if (uniqueCategoryIds.length > 0) {
+      const categories = await this.categoryRepository.find({
+        where: { id: In(uniqueCategoryIds) },
+      });
+
+      const foundIds = new Set(categories.map((c) => c.id));
+      const missingIds = uniqueCategoryIds.filter((id) => !foundIds.has(id));
+      if (missingIds.length > 0) {
+        throw new BadRequestException(`Category IDs not found: ${missingIds.join(', ')}`);
+      }
+    }
+
+    await this.tournamentCategoryRepository.manager.transaction(async (manager) => {
+      await manager.delete(TournamentCategory, { tournamentId });
+
+      if (uniqueCategoryIds.length === 0) {
+        return;
+      }
+
+      const assignments = uniqueCategoryIds.map((categoryId, index) =>
+        manager.create(TournamentCategory, {
+          tournamentId,
+          categoryId,
+          sortOrder: index,
+        }),
+      );
+
+      await manager.save(TournamentCategory, assignments);
     });
 
-    const foundIds = new Set(categories.map((c) => c.id));
-    const missingIds = categoryIds.filter((id) => !foundIds.has(id));
-    if (missingIds.length > 0) {
-      throw new BadRequestException(`Category IDs not found: ${missingIds.join(', ')}`);
-    }
-
-    // Preserve order of categoryIds
-    const orderMap = new Map(categoryIds.map((id, i) => [id, i]));
-    tournament.categories = categories.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
-
-    const saved = await this.tournamentRepository.save(tournament);
-    this.logger.log(`Assigned ${categoryIds.length} category(ies) to tournament ${tournamentId}`);
+    const saved = await this.findByIdOrFail(tournamentId);
+    this.logger.log(`Assigned ${uniqueCategoryIds.length} category(ies) to tournament ${tournamentId}`);
     return saved;
   }
 }

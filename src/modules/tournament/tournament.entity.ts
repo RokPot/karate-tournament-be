@@ -1,20 +1,19 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  ManyToMany,
-  OneToMany,
+  Entity,
   JoinColumn,
-  JoinTable,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
-import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { User } from '../user/user.entity';
+
+import { TournamentCategory } from './tournament-category.entity';
 
 /**
  * Tournament Entity
@@ -58,13 +57,8 @@ export class Tournament {
   @JoinColumn({ name: 'clubId' })
   club!: Club | null;
 
-  @ManyToMany(() => Category, (category) => category.tournaments)
-  @JoinTable({
-    name: 'tournament_categories',
-    joinColumn: { name: 'tournamentId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'categoryId', referencedColumnName: 'id' },
-  })
-  categories!: Category[];
+  @OneToMany(() => TournamentCategory, (categoryAssignment) => categoryAssignment.tournament)
+  categoryAssignments!: TournamentCategory[];
 
   @OneToMany(() => Registration, (registration) => registration.tournament)
   registrations!: Registration[];

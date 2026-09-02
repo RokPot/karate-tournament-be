@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import { ConfigDecorator } from '~common/config';
 
@@ -45,6 +45,17 @@ export class Auth0Config {
   issuerBaseUrl?: string;
 
   /**
+   * When true, JWKS HTTPS requests skip TLS certificate verification.
+   * Use only on dev machines that hit "unable to verify the first certificate"
+   * (e.g. corporate SSL inspection). Prefer fixing trust store or NODE_EXTRA_CA_CERTS.
+   * Never enable in production.
+   */
+  @Expose()
+  @IsOptional()
+  @IsBoolean()
+  jwksTlsInsecure?: boolean;
+
+  /**
    * Get the issuer base URL
    * Auth0 tokens typically have the issuer with a trailing slash
    */
@@ -55,4 +66,3 @@ export class Auth0Config {
     return `https://${this.domain}/`;
   }
 }
-

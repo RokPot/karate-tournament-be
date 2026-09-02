@@ -1,5 +1,5 @@
-import { Controller, Get, Put, Body, Param, NotFoundException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Body, Controller, Get, NotFoundException, Param, Put } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -25,6 +25,7 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User profile', type: UserResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   async getProfile(@CurrentUserEntity() user: User): Promise<UserResponseDto> {
+    console.log('userRRRRRRRRRRRR', user);
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -33,6 +34,8 @@ export class UserController {
     if (!fullUser) {
       throw new NotFoundException('User not found');
     }
+    console.log('userRRRRRRRR22222222222222222222222222222222222RRRR', user);
+
     return UserResponseDto.fromDomain(fullUser);
   }
 

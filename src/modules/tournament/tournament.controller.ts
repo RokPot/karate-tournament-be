@@ -1,24 +1,28 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
   Body,
-  Param,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Param,
+  Post,
+  Put,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+
+import { Public } from '~common/auth';
 
 import { CurrentUserEntity } from '../user/user.decorators';
 import { User } from '../user/user.entity';
-import { TournamentService } from './tournament.service';
+
 import { AssignCategoriesDto } from './dto/assign-categories.dto';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
-import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { TournamentPublicLiteResponseDto } from './dto/tournament-public-lite-response.dto';
 import { TournamentResponseDto } from './dto/tournament-response.dto';
+import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { TournamentService } from './tournament.service';
 
 /**
  * Tournament Controller
@@ -63,6 +67,20 @@ export class TournamentController {
     return tournaments.map((tournament) => TournamentResponseDto.fromDomain(tournament));
   }
 
+  @Public()
+  @Get('public/:id')
+  @ApiOperation({
+    summary: 'Get tournament (public lite)',
+    description: 'Returns tournament name, dates, location, and full category details. No authentication required.',
+  })
+  @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Tournament found', type: TournamentPublicLiteResponseDto })
+  @ApiResponse({ status: 404, description: 'Tournament not found' })
+  async findOnePublic(@Param('id') id: string): Promise<TournamentPublicLiteResponseDto> {
+    const tournament = await this.tournamentService.findByIdOrFail(id);
+    return TournamentPublicLiteResponseDto.fromDomain(tournament);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get tournament by ID', description: 'Retrieves a specific tournament by its ID' })
   @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
@@ -78,7 +96,7 @@ export class TournamentController {
   @ApiOperation({
     summary: 'Assign categories to tournament',
     description:
-      'Sets the tournament\'s categories to the given list. Any previously assigned categories not in the list are unassigned.',
+      "Sets the tournament's categories to the given list. Any previously assigned categories not in the list are unassigned, and the array order becomes the tournament-specific display order.",
   })
   @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Categories assigned successfully', type: TournamentResponseDto })

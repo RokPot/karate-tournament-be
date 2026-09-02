@@ -1,8 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsString, IsOptional, IsEnum, IsNumber, IsEmail, MinLength, MaxLength, Min, Max, IsIn } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
-import { Gender, BeltLevel, UserRole } from '~common/enums';
+import { BeltLevel, Gender, UserRole } from '~common/enums';
+import { ApiDateOnlyProperty } from '~common/swagger/api-date.decorators';
+import { IsDateOfBirth } from '~common/validate';
 
 /** Allowed roles when adding a member to a club */
 const CLUB_MEMBER_ROLES: UserRole[] = [UserRole.CLUB_OWNER, UserRole.CLUB_MEMBER, UserRole.CLUB_COACH];
@@ -67,14 +80,9 @@ export class AddMemberDto {
   gender!: Gender;
 
   @Expose()
-  @ApiProperty({
-    description: 'Birth date',
-    example: '1990-01-01',
-    type: String,
-    format: 'date',
-  })
-  @IsString()
-  birthDate!: string;
+  @ApiDateOnlyProperty({ description: 'Date of birth', example: '7.7.2000' })
+  @IsDateOfBirth()
+  dateOfBirth!: string;
 
   @Expose()
   @ApiPropertyOptional({
@@ -94,7 +102,7 @@ export class AddMemberDto {
   @ApiProperty({
     description: 'Belt level',
     enum: BeltLevel,
-    example: BeltLevel.BLACK,
+    example: BeltLevel.DAN_1,
   })
   @IsEnum(BeltLevel)
   beltLevel!: BeltLevel;

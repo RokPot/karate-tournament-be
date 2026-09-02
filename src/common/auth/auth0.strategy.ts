@@ -1,7 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import * as https from 'node:https';
+
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { Auth0Config } from './auth0.config';
 
@@ -37,7 +39,7 @@ export interface Auth0Payload {
 /**
  * Auth0 JWT Strategy
  * Validates JWT tokens from Auth0 using JWKS (JSON Web Key Set)
- * 
+ *
  * This strategy:
  * - Extracts JWT from Authorization header as Bearer token
  * - Validates token signature using Auth0's JWKS endpoint
@@ -47,30 +49,39 @@ export interface Auth0Payload {
 @Injectable()
 export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
   constructor(private readonly config: Auth0Config) {
+    const jwksUri = `${config.issuer.replace(/\/$/, '')}/.well-known/jwks.json`;
+    const log = new Logger(Auth0Strategy.name);
+
+    if (config.jwksTlsInsecure) {
+      log.warn(
+        'auth0.jwksTlsInsecure=true: JWKS HTTPS certificate verification is disabled. Use only on trusted dev machines.',
+      );
+    }
+
     super({
       // Extract JWT from Authorization header: "Bearer <token>"
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      
+
       // Don't ignore token expiration
       ignoreExpiration: false,
-      
+
       // Verify the audience matches the API identifier
       audience: config.audience,
-      
+
       // Verify the issuer matches Auth0 domain
       issuer: config.issuer,
-      
+
       // Use RS256 algorithm (Auth0's default)
       algorithms: ['RS256'],
-      
+
       // Use JWKS to get the public key for token verification
       // This allows Auth0 to rotate keys without breaking your API
       secretOrKeyProvider: passportJwtSecret({
         cache: true, // Cache the JWKS to avoid repeated requests
         rateLimit: true, // Rate limit JWKS requests
         jwksRequestsPerMinute: 5, // Max 5 requests per minute
-        // Ensure JWKS URI doesn't have double slashes
-        jwksUri: `${config.issuer.replace(/\/$/, '')}/.well-known/jwks.json`,
+        jwksUri,
+        ...(config.jwksTlsInsecure ? { requestAgent: new https.Agent({ rejectUnauthorized: false }) } : {}),
       }),
     });
   }
@@ -78,7 +89,7 @@ export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
   /**
    * Validate the JWT payload
    * This method is called after the token is verified
-   * 
+   *
    * @param payload - The decoded JWT payload
    * @returns The validated payload (or throws if invalid)
    */
@@ -92,4 +103,3 @@ export class Auth0Strategy extends PassportStrategy(Strategy, 'auth0') {
     return payload;
   }
 }
-

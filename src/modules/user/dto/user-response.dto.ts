@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
-import { Gender, BeltLevel, UserRole } from '~common/enums';
+import { BeltLevel, Gender, UserRole } from '~common/enums';
+import { ApiDateTimeProperty, ApiDateTimePropertyOptional } from '~common/swagger/api-date.decorators';
+import { formatDateOfBirthForResponse } from '~common/utils/date-only.utils';
 
 import { ClubResponseDto } from '../../club/dto/club-response.dto';
 import { User } from '../user.entity';
@@ -67,14 +69,12 @@ export class UserResponseDto {
   gender!: Gender | null;
 
   @Expose()
-  @ApiPropertyOptional({
-    description: 'Birth date',
-    example: '1990-01-01',
-    type: String,
-    format: 'date',
+  @ApiDateTimePropertyOptional({
+    description: 'Date of birth',
+    example: '1990-01-01T00:00:00.000Z',
     nullable: true,
   })
-  birthDate!: string | null;
+  dateOfBirth!: string | null;
 
   @Expose()
   @ApiPropertyOptional({
@@ -88,7 +88,7 @@ export class UserResponseDto {
   @ApiPropertyOptional({
     description: 'Belt level',
     enum: BeltLevel,
-    example: BeltLevel.BLACK,
+    example: BeltLevel.DAN_1,
     nullable: true,
   })
   beltLevel!: BeltLevel | null;
@@ -112,21 +112,11 @@ export class UserResponseDto {
   club!: ClubResponseDto | null;
 
   @Expose()
-  @ApiProperty({
-    description: 'Creation timestamp',
-    example: '2024-01-01T00:00:00.000Z',
-    type: String,
-    format: 'date-time',
-  })
+  @ApiDateTimeProperty({ description: 'Creation timestamp' })
   createdAt!: string;
 
   @Expose()
-  @ApiProperty({
-    description: 'Last update timestamp',
-    example: '2024-01-01T00:00:00.000Z',
-    type: String,
-    format: 'date-time',
-  })
+  @ApiDateTimeProperty({ description: 'Last update timestamp' })
   updatedAt!: string;
 
   constructor(data: IUserResponseDto) {
@@ -145,8 +135,7 @@ export class UserResponseDto {
       lastName: user.lastName,
       email: user.email,
       gender: user.gender,
-      birthDate:
-        user.birthDate instanceof Date ? user.birthDate.toISOString() : user.birthDate ? String(user.birthDate) : null,
+      dateOfBirth: formatDateOfBirthForResponse(user.dateOfBirth),
       weight: user.weight != null && typeof user.weight === 'string' ? parseFloat(user.weight) : user.weight,
       beltLevel: user.beltLevel,
       roles: user.roles,

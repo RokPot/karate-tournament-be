@@ -33,8 +33,8 @@ export class Registration {
   @Column({ type: 'uuid' })
   userId!: string;
 
-  @Column({ type: 'uuid' })
-  clubId!: string;
+  @Column({ type: 'uuid', nullable: true })
+  clubId!: string | null;
 
   @Column({ type: 'uuid' })
   tournamentId!: string;
@@ -65,9 +65,9 @@ export class Registration {
   @JoinColumn({ name: 'userId' })
   user!: User;
 
-  @ManyToOne(() => Club, (club) => club.registrations)
+  @ManyToOne(() => Club, (club) => club.registrations, { nullable: true })
   @JoinColumn({ name: 'clubId' })
-  club!: Club;
+  club!: Club | null;
 
   @ManyToOne(() => Tournament, (tournament) => tournament.registrations)
   @JoinColumn({ name: 'tournamentId' })

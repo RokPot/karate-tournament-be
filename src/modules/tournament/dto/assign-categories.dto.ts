@@ -5,12 +5,13 @@ import { ArrayMinSize, IsArray, IsUUID } from 'class-validator';
 /**
  * DTO for assigning categories to a tournament.
  * Replaces all currently assigned categories with the given list.
+ * The array order becomes the tournament-specific display order.
  */
 export class AssignCategoriesDto {
   @Expose()
   @ApiProperty({
     description:
-      'Category IDs to assign to the tournament. Any previously assigned categories not in this list are unassigned.',
+      'Category IDs to assign to the tournament. Any previously assigned categories not in this list are unassigned. Array order becomes display order.',
     example: ['123e4567-e89b-12d3-a456-426614174000', '223e4567-e89b-12d3-a456-426614174001'],
     type: String,
     format: 'uuid',

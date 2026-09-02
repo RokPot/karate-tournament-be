@@ -1,20 +1,20 @@
-import { Module, Global } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 
 import { getConfigFactory } from '~common/config';
 
 import { Auth0Config } from './auth0.config';
-import { Auth0Strategy } from './auth0.strategy';
 import { Auth0Guard } from './auth0.guard';
+import { Auth0Strategy } from './auth0.strategy';
 
 /**
  * Auth0 Module
- * 
+ *
  * Provides Auth0 JWT authentication for the application.
- * 
+ *
  * This module is marked as @Global() so it can be used throughout the app
  * without importing it in every module.
- * 
+ *
  * To use Auth0 authentication:
  * 1. Configure Auth0 in your config file (.config/*.api.template.yml)
  * 2. Add Auth0Guard as a global guard in AppModule (recommended)
@@ -36,10 +36,10 @@ import { Auth0Guard } from './auth0.guard';
     Auth0Guard,
   ],
   exports: [
-    // Export guard and PassportModule for use in other modules
+    // Auth0Config: required when Auth0Guard is registered via APP_GUARD in AppModule
+    Auth0Config,
     Auth0Guard,
     PassportModule,
   ],
 })
 export class Auth0Module {}
-

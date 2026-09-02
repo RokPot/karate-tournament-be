@@ -27,11 +27,12 @@ export class RegistrationResponseDto {
   userId!: string;
 
   @Expose()
-  @ApiProperty({
-    description: 'Club ID',
+  @ApiPropertyOptional({
+    description: 'Club ID (null when no club was linked)',
     example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
   })
-  clubId!: string;
+  clubId!: string | null;
 
   @Expose()
   @ApiProperty({

@@ -2,9 +2,11 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { UserRole } from '~common/enums';
+
 import { InvitationService } from '../invitation/invitation.service';
 import { Tournament } from '../tournament/tournament.entity';
-import type { User } from '../user/user.entity';
+import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 
 import { Club } from './club.entity';
@@ -29,6 +31,8 @@ export class ClubService {
     private readonly clubRepository: Repository<Club>,
     @InjectRepository(Tournament)
     private readonly tournamentRepository: Repository<Tournament>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly invitationService: InvitationService,
     private readonly userService: UserService,
   ) {}
@@ -121,7 +125,7 @@ export class ClubService {
       lastName: dto.lastName,
       email: dto.email ?? null,
       gender: dto.gender,
-      birthDate: dto.birthDate,
+      dateOfBirth: dto.dateOfBirth,
       weight: dto.weight ?? null,
       beltLevel: dto.beltLevel,
     });
@@ -133,17 +137,24 @@ export class ClubService {
   }
 
   /**
-   * Get members (users) of a club
+   * Get members (users) of a club. When role is provided, only members with that role are returned (filtered in DB).
    */
-  async getMembers(clubId: string): Promise<User[]> {
-    const club = await this.clubRepository.findOne({
-      where: { id: clubId },
-      relations: ['users', 'users.club'],
-    });
-    if (!club) {
-      throw new NotFoundException(`Club with ID ${clubId} not found`);
+  async getMembers(clubId: string, role?: UserRole | null): Promise<User[]> {
+    await this.findByIdOrFail(clubId);
+
+    if (role != null) {
+      return this.userRepository
+        .createQueryBuilder('user')
+        .where('user.clubId = :clubId', { clubId })
+        .andWhere('user.roles @> ARRAY[:role]::"users_roles_enum"[]', { role })
+        .leftJoinAndSelect('user.club', 'club')
+        .getMany();
     }
-    return club.users;
+
+    return this.userRepository.find({
+      where: { clubId },
+      relations: ['club'],
+    });
   }
 
   /**
@@ -153,8 +164,14 @@ export class ClubService {
     await this.findByIdOrFail(clubId);
     return this.tournamentRepository.find({
       where: { clubId },
-      relations: ['createdByUser', 'categories', 'club'],
-      order: { startDate: 'ASC', createdAt: 'DESC' },
+      relations: ['createdByUser', 'categoryAssignments', 'categoryAssignments.category', 'club'],
+      order: {
+        startDate: 'ASC',
+        createdAt: 'DESC',
+        categoryAssignments: {
+          sortOrder: 'ASC',
+        },
+      },
     });
   }
 }

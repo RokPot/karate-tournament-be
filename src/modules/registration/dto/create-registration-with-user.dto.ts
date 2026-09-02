@@ -1,8 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsEmail, IsString, IsUUID, IsOptional, IsNumber, IsEnum, Min, Max, MaxLength } from 'class-validator';
+import { IsEmail, IsEnum, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
-import { Gender, BeltLevel } from '~common/enums';
+import { BeltLevel, Gender } from '~common/enums';
+import { ApiDateTimeProperty } from '~common/swagger/api-date.decorators';
+import { IsDateOfBirth } from '~common/validate';
 
 /**
  * Create Registration With User DTO
@@ -51,18 +53,12 @@ export class CreateRegistrationWithUserDto {
   weight?: number;
 
   @Expose()
-  @ApiPropertyOptional({
-    description: 'Age in years (used to calculate birthDate)',
-    example: 25,
-    minimum: 0,
-    maximum: 150,
+  @ApiDateTimeProperty({
+    description: 'Date of birth',
+    example: '2018-02-02T00:00:00.000Z',
   })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(150)
-  age?: number;
+  @IsDateOfBirth()
+  dateOfBirth!: string;
 
   @Expose()
   @ApiPropertyOptional({
@@ -78,7 +74,7 @@ export class CreateRegistrationWithUserDto {
   @ApiPropertyOptional({
     description: 'Belt level',
     enum: BeltLevel,
-    example: BeltLevel.BLACK,
+    example: BeltLevel.DAN_1,
   })
   @IsOptional()
   @IsEnum(BeltLevel)

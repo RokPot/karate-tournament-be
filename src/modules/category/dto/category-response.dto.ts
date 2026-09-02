@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
-import { Discipline, CategoryGender, BeltLevel } from '~common/enums';
+import { Discipline, SubDiscipline, CategoryGender, BeltLevel } from '~common/enums';
 
 import { Category } from '../category.entity';
 
@@ -28,36 +28,47 @@ export class CategoryResponseDto {
   @ApiProperty({
     description: 'Discipline',
     enum: Discipline,
-    example: Discipline.KUMITE,
+    example: Discipline.YAKO_SOKU_KUMITE,
   })
   discipline!: Discipline;
 
   @Expose()
-  @ApiProperty({
-    description: 'Gender categories',
-    enum: CategoryGender,
-    isArray: true,
-    example: [CategoryGender.MALE],
+  @ApiPropertyOptional({
+    description: 'Sub-discipline (null = not specified)',
+    enum: SubDiscipline,
+    example: SubDiscipline.GOHON_IPPON_KUMITE,
+    nullable: true,
   })
-  gender!: CategoryGender[];
-
-  @Expose()
-  @ApiProperty({
-    description: 'Minimum age',
-    example: 18,
-  })
-  ageMin!: number;
-
-  @Expose()
-  @ApiProperty({
-    description: 'Maximum age',
-    example: 35,
-  })
-  ageMax!: number;
+  subDiscipline!: SubDiscipline | null;
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Minimum weight in kg',
+    description: 'Category gender (null = no gender restriction)',
+    enum: CategoryGender,
+    example: CategoryGender.MALE,
+    nullable: true,
+  })
+  gender!: CategoryGender | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Minimum age in years (0 = no lower limit)',
+    example: 18,
+    nullable: true,
+  })
+  ageMin!: number | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Maximum age in years (0 = no upper limit)',
+    example: 35,
+    nullable: true,
+  })
+  ageMax!: number | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Minimum weight in kg (0 = no lower limit)',
     example: 70.0,
     nullable: true,
   })
@@ -65,27 +76,45 @@ export class CategoryResponseDto {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Maximum weight in kg',
+    description: 'Maximum weight in kg (0 = no upper limit)',
     example: 75.0,
     nullable: true,
   })
   weightMax!: number | null;
 
   @Expose()
-  @ApiProperty({
-    description: 'Minimum belt level',
+  @ApiPropertyOptional({
+    description: 'Minimum belt level (null = no lower limit)',
     enum: BeltLevel,
-    example: BeltLevel.BROWN,
+    example: BeltLevel.KYU_4,
+    nullable: true,
   })
-  beltMin!: BeltLevel;
+  beltMin!: BeltLevel | null;
 
   @Expose()
-  @ApiProperty({
-    description: 'Maximum belt level',
+  @ApiPropertyOptional({
+    description: 'Maximum belt level (null = no upper limit)',
     enum: BeltLevel,
-    example: BeltLevel.BLACK,
+    example: BeltLevel.DAN_2,
+    nullable: true,
   })
-  beltMax!: BeltLevel;
+  beltMax!: BeltLevel | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Main team roster size (null = not applicable)',
+    example: 3,
+    nullable: true,
+  })
+  teamSize!: number | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Number of reserve participants allowed (null = not applicable)',
+    example: 1,
+    nullable: true,
+  })
+  teamReservesSize!: number | null;
 
   @Expose()
   @ApiProperty({
@@ -117,6 +146,7 @@ export class CategoryResponseDto {
       id: category.id,
       name: category.name,
       discipline: category.discipline,
+      subDiscipline: category.subDiscipline,
       gender: category.gender,
       ageMin: category.ageMin,
       ageMax: category.ageMax,
@@ -130,6 +160,8 @@ export class CategoryResponseDto {
           : category.weightMax,
       beltMin: category.beltMin,
       beltMax: category.beltMax,
+      teamSize: category.teamSize,
+      teamReservesSize: category.teamReservesSize,
       createdAt:
         category.createdAt instanceof Date ? category.createdAt.toISOString() : String(category.createdAt || ''),
       updatedAt:

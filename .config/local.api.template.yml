@@ -6,7 +6,7 @@
 core:
   stage: ${func:stage}
   release: ${func:release}
-  webBaseUrl: 'http://localhost:8000'
+  webBaseUrl: 'http://localhost:3000'
   apiBaseUrl: 'http://localhost:3002'
   service: lossdog-be
 
@@ -71,7 +71,7 @@ auth0:
   clientId: JIZIYl0F3z7rARQZ92Wc3ySg2KFyS1gx
   clientSecret: V-ehWbpYuWLcA8mXHyYiMf7lRstBaDS5Az_6rncZuFUmutRvo48oYz_a3yfB4fnH
   audience: https://api.tournament-app.com
-
+  # jwksTlsInsecure: true
 
 websocket:
   socketio:

@@ -12,6 +12,7 @@ import {
 
 import { Gender, BeltLevel, UserRole } from '~common/enums';
 
+import { dateOnlyColumnTransformer } from '~database/transformers/date-only-column.transformer';
 import { numericTransformer } from '~database/transformers/numeric.transformer';
 
 import { AuditLog } from '../audit-log/audit-log.entity';
@@ -48,8 +49,8 @@ export class User {
   @Column({ type: 'enum', enum: Gender, nullable: true })
   gender!: Gender | null;
 
-  @Column({ type: 'timestamp', nullable: true })
-  birthDate!: Date | null;
+  @Column({ type: 'date', nullable: true, transformer: dateOnlyColumnTransformer })
+  dateOfBirth!: Date | null;
 
   @Column({
     type: 'numeric',

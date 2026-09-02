@@ -10,23 +10,26 @@ export enum Gender {
 }
 
 export enum BeltLevel {
-  WHITE = 'white',
-  YELLOW = 'yellow',
-  ORANGE = 'orange',
-  GREEN = 'green',
-  BLUE = 'blue',
-  BROWN = 'brown',
-  BLACK = 'black',
-  BLACK_DAN_1 = 'black_dan_1',
-  BLACK_DAN_2 = 'black_dan_2',
-  BLACK_DAN_3 = 'black_dan_3',
-  BLACK_DAN_4 = 'black_dan_4',
-  BLACK_DAN_5 = 'black_dan_5',
-  BLACK_DAN_6 = 'black_dan_6',
-  BLACK_DAN_7 = 'black_dan_7',
-  BLACK_DAN_8 = 'black_dan_8',
-  BLACK_DAN_9 = 'black_dan_9',
-  BLACK_DAN_10 = 'black_dan_10',
+  KYU_10 = '10-kyu',
+  KYU_9 = '9-kyu',
+  KYU_8 = '8-kyu',
+  KYU_7 = '7-kyu',
+  KYU_6 = '6-kyu',
+  KYU_5 = '5-kyu',
+  KYU_4 = '4-kyu',
+  KYU_3 = '3-kyu',
+  KYU_2 = '2-kyu',
+  KYU_1 = '1-kyu',
+  DAN_1 = '1-dan',
+  DAN_2 = '2-dan',
+  DAN_3 = '3-dan',
+  DAN_4 = '4-dan',
+  DAN_5 = '5-dan',
+  DAN_6 = '6-dan',
+  DAN_7 = '7-dan',
+  DAN_8 = '8-dan',
+  DAN_9 = '9-dan',
+  DAN_10 = '10-dan',
 }
 
 export enum UserRole {
@@ -40,8 +43,17 @@ export enum UserRole {
 
 export enum Discipline {
   KATA = 'kata',
-  KUMITE = 'kumite',
-  YAKO_SOKU = 'yako-soku',
+  KATA_TEAM = 'kata-team',
+  KUMITE_TEAM = 'kumite-team',
+  YAKO_SOKU_KUMITE = 'yako-soku-kumite',
+  YIJU_KUMITE = 'yiju-kumite',
+}
+
+export enum SubDiscipline {
+  GOHON_IPPON_KUMITE = 'gohon-ippon-kumite',
+  SANBON_IPPON_KUMITE = 'sanbon-ippon-kumite',
+  KIHON_IPPON_KUMITE = 'kihon-ippon-kumite',
+  DYU_IPPON_KUMITE = 'dyu-ippon-kumite',
 }
 
 export enum CategoryGender {
