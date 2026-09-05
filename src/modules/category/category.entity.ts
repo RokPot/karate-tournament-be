@@ -1,10 +1,20 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import { BeltLevel, CategoryGender, Discipline, SubDiscipline } from '~common/enums';
 
 import { numericTransformer } from '~database/transformers/numeric.transformer';
 
 import { Bracket } from '../bracket/bracket.entity';
+import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { TournamentCategory } from '../tournament/tournament-category.entity';
 
@@ -65,6 +75,9 @@ export class Category {
   @Column({ type: 'int', nullable: true })
   teamReservesSize!: number | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  clubId!: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
 
@@ -72,6 +85,10 @@ export class Category {
   updatedAt!: Date;
 
   // Relations
+  @ManyToOne(() => Club, { nullable: true })
+  @JoinColumn({ name: 'clubId' })
+  club!: Club | null;
+
   @OneToMany(() => TournamentCategory, (tournamentAssignment) => tournamentAssignment.category)
   tournamentAssignments!: TournamentCategory[];
 

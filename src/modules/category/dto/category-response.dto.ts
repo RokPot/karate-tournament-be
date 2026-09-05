@@ -117,6 +117,14 @@ export class CategoryResponseDto {
   teamReservesSize!: number | null;
 
   @Expose()
+  @ApiPropertyOptional({
+    description: 'Owning club ID (null = global catalog)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  clubId!: string | null;
+
+  @Expose()
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-01T00:00:00.000Z',
@@ -162,6 +170,7 @@ export class CategoryResponseDto {
       beltMax: category.beltMax,
       teamSize: category.teamSize,
       teamReservesSize: category.teamReservesSize,
+      clubId: category.clubId ?? null,
       createdAt:
         category.createdAt instanceof Date ? category.createdAt.toISOString() : String(category.createdAt || ''),
       updatedAt:

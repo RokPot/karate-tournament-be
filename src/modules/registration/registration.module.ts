@@ -9,6 +9,7 @@ import { Club } from '../club/club.entity';
 import { Registration } from './registration.entity';
 import { RegistrationService } from './registration.service';
 import { RegistrationController } from './registration.controller';
+import { Team } from './team.entity';
 
 /**
  * Registration Module
@@ -16,7 +17,7 @@ import { RegistrationController } from './registration.controller';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Registration, Tournament, Category, Club, User]),
+    TypeOrmModule.forFeature([Registration, Team, Tournament, Category, Club, User]),
     UserModule,
   ],
   controllers: [RegistrationController],

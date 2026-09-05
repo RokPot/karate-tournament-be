@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { Club } from '../club/club.entity';
 import { Tournament } from '../tournament/tournament.entity';
 
 import { CategoryController } from './category.controller';
@@ -12,7 +13,7 @@ import { CategoryService } from './category.service';
  * Manages category entities and operations.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Category, Tournament])],
+  imports: [TypeOrmModule.forFeature([Category, Tournament, Club])],
   controllers: [CategoryController],
   providers: [CategoryService],
   exports: [CategoryService, TypeOrmModule],

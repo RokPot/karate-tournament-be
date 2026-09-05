@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   Injectable,
   Logger,
@@ -9,7 +10,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { BeltLevel, Gender, RegistrationStatus, UserRole } from '~common/enums';
+import { isAdmin, isClubStaff, isJudge } from '~common/auth';
+import { BeltLevel, Discipline, Gender, RegistrationStatus, TeamRole, TournamentStatus, UserRole } from '~common/enums';
 import { formatDateOnlyAsDateTime, parseDateOfBirth } from '~common/utils/date-only.utils';
 
 import { Category } from '../category/category.entity';
@@ -19,10 +21,12 @@ import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 
 import { BulkPublicRegistrationDto } from './dto/bulk-public-registration.dto';
+import { BulkTeamDto } from './dto/bulk-team.dto';
 import { CreateRegistrationWithUserDto } from './dto/create-registration-with-user.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
 import { Registration } from './registration.entity';
+import { Team } from './team.entity';
 import { userFitsCategory, validateUserFitsCategory } from './validators/category-eligibility.validator';
 
 export interface FindOrCreateTempUserParams {
@@ -53,11 +57,15 @@ export interface CreateRegistrationForUserParams {
   categoryId: string;
   clubId: string | null;
   finalWeight?: number;
+  teamId?: string | null;
+  teamRole?: TeamRole | null;
+  unapprovedAs?: 'not_found' | 'bad_request';
 }
 
 export interface BulkRegistrationResultItem {
   participantIndex: number;
   registrationIndex: number;
+  teamIndex?: number;
   success: boolean;
   registration?: Registration;
   error?: string;
@@ -154,6 +162,8 @@ export class RegistrationService {
     private readonly clubRepository: Repository<Club>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Team)
+    private readonly teamRepository: Repository<Team>,
     private readonly userService: UserService,
   ) {}
 
@@ -176,6 +186,7 @@ export class RegistrationService {
       categoryId: data.categoryId,
       clubId: data.clubId,
       finalWeight: data.finalWeight,
+      unapprovedAs: 'bad_request',
     });
   }
 
@@ -257,6 +268,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${data.tournamentId} not found`);
     }
+    this.assertTournamentApprovedForRegistration(tournament, data.unapprovedAs);
 
     const category = await this.categoryRepository.findOne({
       where: { id: data.categoryId },
@@ -298,6 +310,8 @@ export class RegistrationService {
       clubId: data.clubId,
       status: RegistrationStatus.PENDING,
       finalWeight: data.finalWeight ?? null,
+      teamId: data.teamId ?? null,
+      teamRole: data.teamRole ?? null,
     });
 
     try {
@@ -338,6 +352,7 @@ export class RegistrationService {
       categoryId: data.categoryId,
       clubId,
       finalWeight: data.finalWeight,
+      unapprovedAs: 'not_found',
     });
   }
 
@@ -362,10 +377,15 @@ export class RegistrationService {
   async bulkCreateWithCoach(data: BulkPublicRegistrationDto): Promise<BulkCreateWithCoachResult> {
     const tournament = await this.tournamentRepository.findOne({
       where: { id: data.tournamentId },
+      relations: ['categoryAssignments', 'categoryAssignments.category'],
     });
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${data.tournamentId} not found`);
     }
+    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
+
+    const tournamentCategories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
+    this.validateTeamsPayload(data, tournamentCategories, tournament.startDate);
 
     const club = data.clubName ? await this.resolveClubByName(data.clubName) : null;
     const resolvedClubId = club?.id ?? null;
@@ -379,9 +399,11 @@ export class RegistrationService {
     });
 
     const results: BulkRegistrationResultItem[] = [];
+    const participantUsers: Array<User | null> = [];
 
     for (let participantIndex = 0; participantIndex < data.participants.length; participantIndex++) {
       const participant = data.participants[participantIndex];
+      const registrations = participant.registrations ?? [];
 
       let user: User;
       try {
@@ -395,8 +417,10 @@ export class RegistrationService {
           gender: participant.gender,
           beltLevel: participant.beltLevel,
         });
+        participantUsers[participantIndex] = user;
       } catch (error) {
-        for (let registrationIndex = 0; registrationIndex < participant.registrations.length; registrationIndex++) {
+        participantUsers[participantIndex] = null;
+        for (let registrationIndex = 0; registrationIndex < registrations.length; registrationIndex++) {
           results.push({
             participantIndex,
             registrationIndex,
@@ -407,8 +431,8 @@ export class RegistrationService {
         continue;
       }
 
-      for (let registrationIndex = 0; registrationIndex < participant.registrations.length; registrationIndex++) {
-        const reg = participant.registrations[registrationIndex];
+      for (let registrationIndex = 0; registrationIndex < registrations.length; registrationIndex++) {
+        const reg = registrations[registrationIndex];
 
         try {
           const saved = await this.createRegistrationForUser(user, {
@@ -416,6 +440,7 @@ export class RegistrationService {
             categoryId: reg.categoryId,
             clubId: resolvedClubId,
             finalWeight: reg.finalWeight,
+            unapprovedAs: 'not_found',
           });
           results.push({
             participantIndex,
@@ -434,7 +459,228 @@ export class RegistrationService {
       }
     }
 
+    if (data.teams?.length) {
+      await this.assertTeamsUniqueAgainstStored(data.tournamentId, data.teams, participantUsers);
+      const teamResults = await this.persistTeams(data.tournamentId, resolvedClubId, data.teams, participantUsers);
+      results.push(...teamResults);
+    }
+
     return { coach, results };
+  }
+
+  private validateTeamsPayload(
+    data: BulkPublicRegistrationDto,
+    tournamentCategories: Category[],
+    tournamentStartDate: Date,
+  ): void {
+    const teams = data.teams ?? [];
+    if (teams.length === 0) {
+      return;
+    }
+
+    const participantCount = data.participants.length;
+    const categoriesById = new Map(tournamentCategories.map((category) => [category.id, category]));
+    const teamDisciplines = new Set<Discipline>([Discipline.KATA_TEAM, Discipline.KUMITE_TEAM]);
+    const membersByCategory = new Map<string, Set<number>>();
+    const rostersByCategory = new Map<string, Set<string>>();
+
+    teams.forEach((team, teamIndex) => {
+      const category = categoriesById.get(team.categoryId);
+      if (!category) {
+        throw new BadRequestException(`Team ${teamIndex}: category is not part of this tournament`);
+      }
+      if (!teamDisciplines.has(category.discipline) || category.teamSize == null) {
+        throw new BadRequestException(`Team ${teamIndex}: category is not a team discipline with teamSize set`);
+      }
+
+      const starters = team.starters ?? [];
+      const reserves = team.reserves ?? [];
+      if (starters.length !== category.teamSize) {
+        throw new BadRequestException(`Team ${teamIndex}: starters length must equal teamSize (${category.teamSize})`);
+      }
+
+      const maxReserves = category.teamReservesSize ?? 0;
+      if (reserves.length > maxReserves) {
+        throw new BadRequestException(`Team ${teamIndex}: reserves length must be between 0 and ${maxReserves}`);
+      }
+
+      const allIndexes = [...starters, ...reserves];
+      const seenOnTeam = new Set<number>();
+      for (const participantIndex of allIndexes) {
+        if (!Number.isInteger(participantIndex) || participantIndex < 0 || participantIndex >= participantCount) {
+          throw new BadRequestException(`Team ${teamIndex}: participantIndex ${participantIndex} is out of range`);
+        }
+        if (seenOnTeam.has(participantIndex)) {
+          throw new BadRequestException(`Team ${teamIndex}: duplicate person on the same team`);
+        }
+        seenOnTeam.add(participantIndex);
+
+        const categoryMembers = membersByCategory.get(team.categoryId) ?? new Set<number>();
+        if (categoryMembers.has(participantIndex)) {
+          throw new BadRequestException(
+            `Team ${teamIndex}: participant ${participantIndex} is already on another team in this category`,
+          );
+        }
+        categoryMembers.add(participantIndex);
+        membersByCategory.set(team.categoryId, categoryMembers);
+
+        const participant = data.participants[participantIndex];
+        const syntheticUser = this.toSyntheticUser(participant);
+        if (!userFitsCategory(syntheticUser, category, participant.weight, tournamentStartDate)) {
+          throw new BadRequestException(
+            `Team ${teamIndex}: participant ${participantIndex} is not eligible for this category`,
+          );
+        }
+      }
+
+      const rosterKey = [...allIndexes].sort((a, b) => a - b).join(',');
+      const existingRosters = rostersByCategory.get(team.categoryId) ?? new Set<string>();
+      if (existingRosters.has(rosterKey)) {
+        throw new BadRequestException(`Team ${teamIndex}: duplicate roster in this category`);
+      }
+      existingRosters.add(rosterKey);
+      rostersByCategory.set(team.categoryId, existingRosters);
+    });
+  }
+
+  private async assertTeamsUniqueAgainstStored(
+    tournamentId: string,
+    teams: BulkTeamDto[],
+    participantUsers: Array<User | null>,
+  ): Promise<void> {
+    const stored = await this.teamRepository.find({
+      where: { tournamentId },
+      relations: ['registrations'],
+    });
+    const storedRostersByCategory = new Map<string, Set<string>>();
+    const storedMembersByCategory = new Map<string, Set<string>>();
+
+    for (const team of stored) {
+      const userIds = (team.registrations ?? []).map((registration) => registration.userId).sort();
+      const rosterKey = userIds.join(',');
+      const rosters = storedRostersByCategory.get(team.categoryId) ?? new Set<string>();
+      rosters.add(rosterKey);
+      storedRostersByCategory.set(team.categoryId, rosters);
+
+      const members = storedMembersByCategory.get(team.categoryId) ?? new Set<string>();
+      userIds.forEach((userId) => members.add(userId));
+      storedMembersByCategory.set(team.categoryId, members);
+    }
+
+    teams.forEach((team, teamIndex) => {
+      const memberUserIds: string[] = [];
+      for (const participantIndex of [...team.starters, ...(team.reserves ?? [])]) {
+        const user = participantUsers[participantIndex];
+        if (!user) {
+          throw new BadRequestException(`Team ${teamIndex}: participant ${participantIndex} could not be created`);
+        }
+        const members = storedMembersByCategory.get(team.categoryId) ?? new Set<string>();
+        if (members.has(user.id)) {
+          throw new BadRequestException(
+            `Team ${teamIndex}: participant ${participantIndex} is already on a team in this category`,
+          );
+        }
+        memberUserIds.push(user.id);
+      }
+
+      const rosterKey = [...memberUserIds].sort().join(',');
+      const existingRosters = storedRostersByCategory.get(team.categoryId) ?? new Set<string>();
+      if (existingRosters.has(rosterKey)) {
+        throw new BadRequestException(`Team ${teamIndex}: duplicate roster in this category`);
+      }
+    });
+  }
+
+  private async persistTeams(
+    tournamentId: string,
+    clubId: string | null,
+    teams: BulkTeamDto[],
+    participantUsers: Array<User | null>,
+  ): Promise<BulkRegistrationResultItem[]> {
+    const results: BulkRegistrationResultItem[] = [];
+
+    for (let teamIndex = 0; teamIndex < teams.length; teamIndex++) {
+      const teamDto = teams[teamIndex];
+      const team = await this.teamRepository.save(
+        this.teamRepository.create({
+          tournamentId,
+          categoryId: teamDto.categoryId,
+          clubId,
+        }),
+      );
+
+      const members: Array<{ participantIndex: number; role: TeamRole }> = [
+        ...teamDto.starters.map((participantIndex) => ({ participantIndex, role: TeamRole.STARTER })),
+        ...(teamDto.reserves ?? []).map((participantIndex) => ({ participantIndex, role: TeamRole.RESERVE })),
+      ];
+
+      for (let registrationIndex = 0; registrationIndex < members.length; registrationIndex++) {
+        const { participantIndex, role } = members[registrationIndex];
+        const user = participantUsers[participantIndex];
+        if (!user) {
+          results.push({
+            participantIndex,
+            registrationIndex,
+            teamIndex,
+            success: false,
+            error: `Participant ${participantIndex} could not be created`,
+          });
+          continue;
+        }
+
+        try {
+          const saved = await this.createOrAttachTeamRegistration(user, {
+            tournamentId,
+            categoryId: teamDto.categoryId,
+            clubId,
+            teamId: team.id,
+            teamRole: role,
+            unapprovedAs: 'not_found',
+          });
+          results.push({
+            participantIndex,
+            registrationIndex,
+            teamIndex,
+            success: true,
+            registration: saved,
+          });
+        } catch (error) {
+          results.push({
+            participantIndex,
+            registrationIndex,
+            teamIndex,
+            success: false,
+            error: getHttpExceptionMessage(error),
+          });
+        }
+      }
+    }
+
+    return results;
+  }
+
+  private async createOrAttachTeamRegistration(
+    user: User,
+    data: CreateRegistrationForUserParams & { teamId: string; teamRole: TeamRole },
+  ): Promise<Registration> {
+    const existing = await this.registrationRepository.findOne({
+      where: {
+        userId: user.id,
+        tournamentId: data.tournamentId,
+        categoryId: data.categoryId,
+      },
+    });
+
+    if (existing) {
+      if (existing.teamId) {
+        throw new BadRequestException('Participant is already on a team in this category');
+      }
+      existing.teamId = data.teamId;
+      existing.teamRole = data.teamRole;
+      return this.registrationRepository.save(existing);
+    }
+
+    return this.createRegistrationForUser(user, data);
   }
 
   /**
@@ -506,6 +752,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
+    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
 
     return this.filterSuitableCategories(
       (tournament.categoryAssignments ?? []).map((assignment) => assignment.category),
@@ -533,6 +780,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
+    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
 
     const categories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
 
@@ -566,6 +814,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
+    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
 
     const categories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
     const ageAtDateRef = tournament.startDate;
@@ -602,7 +851,7 @@ export class RegistrationService {
   /**
    * Find all registrations for a tournament, optionally filtered by category.
    */
-  async findByTournament(tournamentId: string, categoryId?: string): Promise<Registration[]> {
+  async findByTournament(tournamentId: string, categoryId?: string, user?: User): Promise<Registration[]> {
     const tournament = await this.tournamentRepository.findOne({
       where: { id: tournamentId },
       relations: ['categoryAssignments', 'categoryAssignments.category'],
@@ -614,6 +863,10 @@ export class RegistrationService {
     });
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
+    }
+
+    if (user) {
+      this.assertCanReadTournamentRegistrations(user, tournament);
     }
 
     if (categoryId) {
@@ -641,12 +894,19 @@ export class RegistrationService {
   }
 
   /**
-   * Find all registrations for a user
+   * Find registrations for a user, optionally filtered by tournament and status
    */
-  async findByUser(userId: string): Promise<Registration[]> {
+  async findByUser(
+    userId: string,
+    filters?: { tournamentId?: string; status?: RegistrationStatus },
+  ): Promise<Registration[]> {
     return this.registrationRepository.find({
-      where: { userId },
-      relations: ['tournament', 'category', 'club'],
+      where: {
+        userId,
+        ...(filters?.tournamentId ? { tournamentId: filters.tournamentId } : {}),
+        ...(filters?.status ? { status: filters.status } : {}),
+      },
+      relations: ['user', 'tournament', 'category', 'club'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -662,5 +922,71 @@ export class RegistrationService {
 
     registration.status = status;
     return this.registrationRepository.save(registration);
+  }
+
+  /**
+   * Registration counts for every assigned tournament category, including zeros.
+   */
+  async findCountsByTournament(
+    tournamentId: string,
+    user: User,
+  ): Promise<Array<{ categoryId: string; registrationCount: number }>> {
+    const tournament = await this.tournamentRepository.findOne({
+      where: { id: tournamentId },
+      relations: ['categoryAssignments'],
+      order: {
+        categoryAssignments: {
+          sortOrder: 'ASC',
+        },
+      },
+    });
+    if (!tournament) {
+      throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
+    }
+
+    this.assertCanReadTournamentRegistrations(user, tournament);
+
+    const assignments = tournament.categoryAssignments ?? [];
+    if (assignments.length === 0) {
+      return [];
+    }
+
+    const rawCounts = await this.registrationRepository
+      .createQueryBuilder('registration')
+      .select('registration.categoryId', 'categoryId')
+      .addSelect('COUNT(*)', 'count')
+      .where('registration.tournamentId = :tournamentId', { tournamentId })
+      .groupBy('registration.categoryId')
+      .getRawMany<{ categoryId: string; count: string }>();
+
+    const countByCategoryId = new Map(rawCounts.map((row) => [row.categoryId, Number(row.count)]));
+
+    return assignments.map((assignment) => ({
+      categoryId: assignment.categoryId,
+      registrationCount: countByCategoryId.get(assignment.categoryId) ?? 0,
+    }));
+  }
+
+  private assertCanReadTournamentRegistrations(user: User, tournament: Tournament): void {
+    const canRead =
+      isAdmin(user.roles) ||
+      isJudge(user.roles) ||
+      (isClubStaff(user.roles) && !!user.clubId && tournament.clubId === user.clubId);
+    if (!canRead) {
+      throw new ForbiddenException('Insufficient permissions to list registrations for this tournament');
+    }
+  }
+
+  private assertTournamentApprovedForRegistration(
+    tournament: Tournament,
+    unapprovedAs: 'not_found' | 'bad_request' = 'bad_request',
+  ): void {
+    if (tournament.status === TournamentStatus.APPROVED) {
+      return;
+    }
+    if (unapprovedAs === 'not_found') {
+      throw new NotFoundException(`Tournament with ID ${tournament.id} not found`);
+    }
+    throw new BadRequestException('Registration is not open');
   }
 }

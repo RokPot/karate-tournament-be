@@ -7,7 +7,7 @@ import {
   INestApplication,
 } from '@nestjs/common';
 import { Observable, from } from 'rxjs';
-import { switchMap, tap, catchError } from 'rxjs/operators';
+import { switchMap, tap } from 'rxjs/operators';
 import { Request } from 'express';
 
 import { Auth0Payload } from '~common/auth';
@@ -53,20 +53,12 @@ export class UserSyncInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    // Find or create user from Auth0 payload (async operation)
     return from(this.userService.findOrCreateByAuth0Id(auth0Payload)).pipe(
       tap((userEntity) => {
-        // Attach User entity to request for use in controllers
         request.userEntity = userEntity;
         this.logger.debug(`User synced: ${userEntity.id} (auth0Id: ${userEntity.auth0Id})`);
       }),
       switchMap(() => next.handle()),
-      // If user sync fails, log error but continue with request
-      catchError((error) => {
-        this.logger.error(`Failed to sync user from Auth0: ${error.message}`, error.stack);
-        // Continue with request even if sync fails
-        return next.handle();
-      }),
     );
   }
 }

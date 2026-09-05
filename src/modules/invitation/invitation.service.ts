@@ -1,9 +1,10 @@
 import { randomUUID } from 'crypto';
 
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { isAdmin, isClubStaff } from '~common/auth';
 import { InvitationStatus, UserRole } from '~common/enums';
 
 import { Club } from '../club/club.entity';
@@ -34,18 +35,42 @@ export class InvitationService {
   ) {}
 
   /**
-   * Find all invitations (for GET /invitations list), newest first.
+   * Find invitations for GET /invitations, scoped by caller role and optional clubId.
    */
-  async findAll(): Promise<Invitation[]> {
-    return this.invitationRepository.find({
-      relations: ['club'],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(user: User, clubId?: string): Promise<Invitation[]> {
+    const roles = user.roles ?? [];
+    const isAdmin = roles.includes(UserRole.ADMIN);
+    const isClubStaff = roles.includes(UserRole.CLUB_OWNER) || roles.includes(UserRole.CLUB_COACH);
+
+    if (isAdmin) {
+      return this.invitationRepository.find({
+        where: clubId ? { clubId } : {},
+        relations: ['club'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    if (isClubStaff) {
+      if (!user.clubId) {
+        throw new ForbiddenException('User is not associated with a club');
+      }
+      if (clubId && clubId !== user.clubId) {
+        throw new ForbiddenException('Cannot list invitations for another club');
+      }
+
+      return this.invitationRepository.find({
+        where: { clubId: user.clubId },
+        relations: ['club'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    throw new ForbiddenException('Insufficient permissions to list invitations');
   }
 
   /**
-   * Create an invitation for a club owner.
-   * Called when creating a club with ownerEmail.
+   * Create an invitation for a club.
+   * Called when creating a club with ownerEmail (defaults to club_owner).
    * Returns the token for building inviteUrl.
    */
   async create(
@@ -53,6 +78,7 @@ export class InvitationService {
     email: string,
     firstName?: string | null,
     lastName?: string | null,
+    role: UserRole = UserRole.CLUB_OWNER,
   ): Promise<{ token: string; inviteUrl: string }> {
     const token = randomUUID();
     const expiresAt = new Date();
@@ -63,6 +89,7 @@ export class InvitationService {
       email: email.trim().toLowerCase(),
       firstName: firstName?.trim() || null,
       lastName: lastName?.trim() || null,
+      role,
       token,
       expiresAt,
       status: InvitationStatus.PENDING,
@@ -78,46 +105,107 @@ export class InvitationService {
   }
 
   /**
-   * Find invitation by token (for public GET by-token).
-   * Returns invitation with club relation or null if not found / expired / not pending.
+   * Invite someone to an existing club. 409 if pending invite or existing member.
    */
-  async findByToken(token: string): Promise<Invitation | null> {
+  async createForExistingClub(
+    clubId: string,
+    email: string,
+    firstName?: string | null,
+    lastName?: string | null,
+    role: UserRole = UserRole.CLUB_MEMBER,
+  ): Promise<{ invitation: Invitation; inviteUrl: string }> {
+    const club = await this.clubRepository.findOne({ where: { id: clubId } });
+    if (!club) {
+      throw new NotFoundException(`Club with ID ${clubId} not found`);
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const pending = await this.invitationRepository.findOne({
+      where: { clubId, email: normalizedEmail, status: InvitationStatus.PENDING },
+    });
+    if (pending) {
+      throw new ConflictException('A pending invitation already exists for this email and club');
+    }
+
+    const existingMember = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.clubId = :clubId', { clubId })
+      .andWhere('LOWER(user.email) = :email', { email: normalizedEmail })
+      .getOne();
+    if (existingMember) {
+      throw new ConflictException('This email is already a member of the club');
+    }
+
+    const { token, inviteUrl } = await this.create(clubId, normalizedEmail, firstName, lastName, role);
     const invitation = await this.invitationRepository.findOne({
       where: { token },
       relations: ['club'],
     });
-
     if (!invitation) {
-      return null;
+      throw new NotFoundException('Invitation not found after creation');
     }
 
-    if (invitation.status !== InvitationStatus.PENDING) {
-      return null;
-    }
-
-    if (new Date() > invitation.expiresAt) {
-      return null;
-    }
-
-    return invitation;
+    return { invitation, inviteUrl };
   }
 
   /**
-   * Find invitation by token or throw if not found / not valid.
+   * Cancel a pending invitation.
    */
-  async findByTokenOrFail(token: string): Promise<Invitation> {
+  async cancel(id: string, user: User): Promise<void> {
+    const invitation = await this.invitationRepository.findOne({
+      where: { id },
+      relations: ['club'],
+    });
+    if (!invitation) {
+      throw new NotFoundException(`Invitation with ID ${id} not found`);
+    }
+
+    if (!isAdmin(user.roles)) {
+      if (!isClubStaff(user.roles) || !user.clubId || user.clubId !== invitation.clubId) {
+        throw new ForbiddenException('Cannot cancel an invitation for another club');
+      }
+    }
+
+    if (invitation.status !== InvitationStatus.PENDING) {
+      throw new BadRequestException('Only pending invitations can be cancelled');
+    }
+
+    invitation.status = InvitationStatus.CANCELLED;
+    await this.invitationRepository.save(invitation);
+    this.logger.log(`Invitation ${invitation.id} cancelled by user ${user.id}`);
+  }
+
+  /**
+   * Find invitation by token (for public GET by-token).
+   * Returns the row if the token exists, including expired / accepted / cancelled.
+   */
+  async findByToken(token: string): Promise<Invitation | null> {
+    return this.invitationRepository.findOne({
+      where: { token },
+      relations: ['club'],
+    });
+  }
+
+  /**
+   * Find a pending, unexpired invitation by token or throw.
+   */
+  async findPendingByTokenOrFail(token: string): Promise<Invitation> {
     const invitation = await this.findByToken(token);
     if (!invitation) {
+      throw new NotFoundException('Invitation not found or no longer valid');
+    }
+    if (invitation.status !== InvitationStatus.PENDING || new Date() > invitation.expiresAt) {
       throw new NotFoundException('Invitation not found or no longer valid');
     }
     return invitation;
   }
 
   /**
-   * Accept an invitation: link user to club, assign club owner role, mark invitation accepted.
+   * Accept an invitation: copy empty profile fields, link club, assign invitation role.
    */
   async accept(token: string, user: User): Promise<{ user: User; club: Club }> {
-    const invitation = await this.findByTokenOrFail(token);
+    const invitation = await this.findPendingByTokenOrFail(token);
 
     const club = await this.clubRepository.findOne({
       where: { id: invitation.clubId },
@@ -128,17 +216,18 @@ export class InvitationService {
     }
 
     const existingRoles = user.roles ?? [];
-    const roleToAdd = UserRole.CLUB_OWNER;
+    const roleToAdd = invitation.role;
+    const patch: Partial<User> = {
+      clubId: invitation.clubId,
+    };
     if (!existingRoles.includes(roleToAdd)) {
-      await this.userRepository.update(user.id, {
-        clubId: invitation.clubId,
-        roles: [...existingRoles, roleToAdd],
-      });
-    } else {
-      await this.userRepository.update(user.id, {
-        clubId: invitation.clubId,
-      });
+      patch.roles = [...existingRoles, roleToAdd];
     }
+    if (!user.firstName && invitation.firstName) patch.firstName = invitation.firstName;
+    if (!user.lastName && invitation.lastName) patch.lastName = invitation.lastName;
+    if (!user.email && invitation.email) patch.email = invitation.email;
+
+    await this.userRepository.update(user.id, patch);
 
     await this.invitationRepository.update(invitation.id, {
       status: InvitationStatus.ACCEPTED,

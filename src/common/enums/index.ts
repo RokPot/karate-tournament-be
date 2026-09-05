@@ -67,9 +67,22 @@ export enum RegistrationStatus {
   REJECTED = 'rejected',
 }
 
+export enum TournamentStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  DECLINED = 'declined',
+  IN_PROGRESS = 'in_progress',
+  ENDED = 'ended',
+}
+
 export enum InvitationStatus {
   PENDING = 'pending',
   ACCEPTED = 'accepted',
   EXPIRED = 'expired',
   CANCELLED = 'cancelled',
+}
+
+export enum TeamRole {
+  STARTER = 'starter',
+  RESERVE = 'reserve',
 }

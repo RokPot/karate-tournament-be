@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
-import { RegistrationStatus } from '~common/enums';
+import { RegistrationStatus, TeamRole } from '~common/enums';
 
 import { UserResponseDto } from '../../user/dto/user-response.dto';
 import { ClubResponseDto } from '../../club/dto/club-response.dto';
@@ -65,6 +65,23 @@ export class RegistrationResponseDto {
   finalWeight!: number | null;
 
   @Expose()
+  @ApiPropertyOptional({
+    description: 'Team ID when this registration is part of a team roster',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  teamId!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Role on the team roster',
+    enum: TeamRole,
+    example: TeamRole.STARTER,
+    nullable: true,
+  })
+  teamRole!: TeamRole | null;
+
+  @Expose()
   @Type(() => UserResponseDto)
   @ApiPropertyOptional({
     description: 'User information',
@@ -119,6 +136,8 @@ export class RegistrationResponseDto {
         registration.finalWeight != null && typeof registration.finalWeight === 'string'
           ? parseFloat(registration.finalWeight)
           : registration.finalWeight,
+      teamId: registration.teamId ?? null,
+      teamRole: registration.teamRole ?? null,
       user: registration.user ? UserResponseDto.fromDomain(registration.user) : null,
       club: registration.club ? ClubResponseDto.fromDomain(registration.club) : null,
       createdAt: registration.createdAt instanceof Date ? registration.createdAt.toISOString() : String(registration.createdAt || ''),

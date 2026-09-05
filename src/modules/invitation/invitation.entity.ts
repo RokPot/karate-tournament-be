@@ -9,7 +9,7 @@ import {
   Index,
 } from 'typeorm';
 
-import { InvitationStatus } from '~common/enums';
+import { InvitationStatus, UserRole } from '~common/enums';
 
 import { Club } from '../club/club.entity';
 import { User } from '../user/user.entity';
@@ -17,7 +17,7 @@ import { User } from '../user/user.entity';
 /**
  * Invitation Entity
  * Represents a club owner invitation. Created when a club is created with owner email.
- * User accepts via token to link their account to the club with owner role.
+ * User accepts via token to link their account to the club with the invitation role.
  */
 @Entity('invitations')
 export class Invitation {
@@ -45,6 +45,9 @@ export class Invitation {
 
   @Column({ type: 'enum', enum: InvitationStatus, default: InvitationStatus.PENDING })
   status!: InvitationStatus;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.CLUB_OWNER })
+  role!: UserRole;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;

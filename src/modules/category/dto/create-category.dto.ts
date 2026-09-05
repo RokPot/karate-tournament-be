@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsString, IsEnum, IsNumber, IsInt, IsOptional, MaxLength, Min, ValidateIf } from 'class-validator';
+import { IsString, IsEnum, IsNumber, IsInt, IsOptional, IsUUID, MaxLength, Min, ValidateIf } from 'class-validator';
 
 import { Discipline, SubDiscipline, CategoryGender, BeltLevel } from '~common/enums';
 
@@ -159,4 +159,15 @@ export class CreateCategoryDto {
   @IsInt()
   @Min(0)
   teamReservesSize?: number | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Owning club ID (null/omit = global catalog for admins)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @IsUUID('4')
+  clubId?: string | null;
 }

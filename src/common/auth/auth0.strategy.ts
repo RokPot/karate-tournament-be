@@ -20,6 +20,10 @@ export interface Auth0Payload {
   email_verified?: boolean;
   /** User's full name */
   name?: string;
+  /** Given name from Auth0 (OIDC) */
+  given_name?: string;
+  /** Family name from Auth0 (OIDC) */
+  family_name?: string;
   /** User's nickname */
   nickname?: string;
   /** User's profile picture URL */

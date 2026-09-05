@@ -30,6 +30,13 @@ export class BulkRegistrationResultItemDto {
   registrationIndex!: number;
 
   @Expose()
+  @ApiPropertyOptional({
+    description: 'Index of the team in the request teams array (present for team roster registrations)',
+    example: 0,
+  })
+  teamIndex?: number;
+
+  @Expose()
   @ApiProperty({ description: 'Whether this registration was created successfully', example: true })
   success!: boolean;
 

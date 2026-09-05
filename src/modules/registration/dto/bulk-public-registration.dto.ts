@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 
 import { BulkParticipantDto } from './bulk-participant.dto';
+import { BulkTeamDto } from './bulk-team.dto';
 import { TransformObjectToArray } from './transformers/object-to-array.transform';
 
 /**
@@ -72,4 +73,16 @@ export class BulkPublicRegistrationDto {
   @ValidateNested({ each: true })
   @Type(() => BulkParticipantDto)
   participants!: BulkParticipantDto[];
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Team rosters (kata-team / kumite-team). Participant indexes refer to participants[].',
+    type: [BulkTeamDto],
+  })
+  @IsOptional()
+  @TransformObjectToArray()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkTeamDto)
+  teams?: BulkTeamDto[];
 }

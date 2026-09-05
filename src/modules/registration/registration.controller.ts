@@ -21,11 +21,14 @@ import {
 } from './dto/category-suitable-participants-response.dto';
 import { CreateRegistrationWithUserDto } from './dto/create-registration-with-user.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
+import { MyRegistrationsQueryDto } from './dto/my-registrations-query.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
 import { PublicParticipantSuitableCategoriesItemDto } from './dto/public-participant-suitable-categories-response.dto';
 import { PublicSuitableCategoriesQueryDto } from './dto/public-suitable-categories-query.dto';
 import { RegistrationResponseDto } from './dto/registration-response.dto';
 import { SuitableCategoriesQueryDto } from './dto/suitable-categories-query.dto';
+import { TournamentRegistrationCountsQueryDto } from './dto/tournament-registration-counts-query.dto';
+import { TournamentRegistrationCountItemDto } from './dto/tournament-registration-counts-response.dto';
 import { TournamentRegistrationsQueryDto } from './dto/tournament-registrations-query.dto';
 import { RegistrationService } from './registration.service';
 
@@ -122,6 +125,7 @@ export class RegistrationController {
           BulkRegistrationResultItemDto.fromData({
             participantIndex: item.participantIndex,
             registrationIndex: item.registrationIndex,
+            teamIndex: item.teamIndex,
             success: true,
             registration: full ? RegistrationResponseDto.fromDomain(full) : undefined,
           }),
@@ -131,6 +135,7 @@ export class RegistrationController {
           BulkRegistrationResultItemDto.fromData({
             participantIndex: item.participantIndex,
             registrationIndex: item.registrationIndex,
+            teamIndex: item.teamIndex,
             success: false,
             error: item.error,
           }),
@@ -234,6 +239,31 @@ export class RegistrationController {
     );
   }
 
+  @Get('by-tournament/counts')
+  @ApiOperation({
+    summary: 'Get registration counts per assigned category',
+    description:
+      'Returns one row per category assigned to the tournament, including categories with zero registrations. Ordered by tournament category sort order.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Registration counts per assigned category',
+    type: [TournamentRegistrationCountItemDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
+  @ApiResponse({ status: 404, description: 'Tournament not found' })
+  async findCountsByTournament(
+    @CurrentUserEntity() currentUser: User,
+    @Query() query: TournamentRegistrationCountsQueryDto,
+  ): Promise<TournamentRegistrationCountItemDto[]> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const counts = await this.registrationService.findCountsByTournament(query.tournamentId, currentUser);
+    return counts.map((item) => TournamentRegistrationCountItemDto.fromData(item.categoryId, item.registrationCount));
+  }
+
   @Get('by-tournament')
   @ApiOperation({
     summary: 'List registrations for a tournament',
@@ -242,9 +272,20 @@ export class RegistrationController {
   })
   @ApiResponse({ status: 200, description: 'Registrations list', type: [RegistrationResponseDto] })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
   @ApiResponse({ status: 404, description: 'Tournament or category not found' })
-  async findByTournament(@Query() query: TournamentRegistrationsQueryDto): Promise<RegistrationResponseDto[]> {
-    const registrations = await this.registrationService.findByTournament(query.tournamentId, query.categoryId);
+  async findByTournament(
+    @CurrentUserEntity() currentUser: User,
+    @Query() query: TournamentRegistrationsQueryDto,
+  ): Promise<RegistrationResponseDto[]> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const registrations = await this.registrationService.findByTournament(
+      query.tournamentId,
+      query.categoryId,
+      currentUser,
+    );
     return registrations.map((r) => RegistrationResponseDto.fromDomain(r));
   }
 
@@ -259,6 +300,30 @@ export class RegistrationController {
   async getSuitableCategories(@Query() query: SuitableCategoriesQueryDto): Promise<CategoryResponseDto[]> {
     const categories = await this.registrationService.getSuitableCategoriesForUser(query.userId, query.tournamentId);
     return categories.map((c) => CategoryResponseDto.fromDomain(c));
+  }
+
+  @Get('me')
+  @ApiOperation({
+    summary: 'Get current user registrations',
+    description:
+      'Returns registrations for the authenticated caller only. Optionally filter by tournamentId and status.',
+  })
+  @ApiResponse({ status: 200, description: 'Caller registrations', type: [RegistrationResponseDto] })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async findMine(
+    @CurrentUserEntity() currentUser: User,
+    @Query() query: MyRegistrationsQueryDto,
+  ): Promise<RegistrationResponseDto[]> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const registrations = await this.registrationService.findByUser(currentUser.id, {
+      tournamentId: query.tournamentId,
+      status: query.status,
+    });
+    return registrations.map((r) => RegistrationResponseDto.fromDomain(r));
   }
 
   @Get(':id')

@@ -50,38 +50,29 @@ export class UserService {
    * This is used for lazy user creation on first authenticated request.
    */
   async findOrCreateByAuth0Id(payload: Auth0Payload): Promise<User> {
-    // Try to find existing user
+    const { firstName, lastName } = namesFromAuth0Payload(payload);
+    const email = payload.email?.trim() || null;
+
     let user = await this.findByAuth0Id(payload.sub);
 
     if (user) {
-      return user;
-    }
-
-    // Extract name from Auth0 payload
-    // Auth0 provides: name, nickname, email
-    // We'll try to split name into firstName/lastName if available
-    let firstName: string | null = null;
-    let lastName: string | null = null;
-
-    if (payload.name) {
-      const nameParts = payload.name.trim().split(/\s+/);
-      if (nameParts.length > 0) {
-        firstName = nameParts[0];
-        if (nameParts.length > 1) {
-          lastName = nameParts.slice(1).join(' ');
-        }
+      const patch: Partial<User> = {};
+      if (!user.email && email) patch.email = email;
+      if (!user.firstName && firstName) patch.firstName = firstName;
+      if (!user.lastName && lastName) patch.lastName = lastName;
+      if (Object.keys(patch).length === 0) {
+        return user;
       }
-    } else if (payload.nickname) {
-      // Fallback to nickname if name is not available
-      firstName = payload.nickname;
+      await this.userRepository.update(user.id, patch);
+      const updated = await this.findByAuth0Id(payload.sub);
+      return updated ?? user;
     }
 
-    // Create new user with data from Auth0
     user = this.userRepository.create({
       auth0Id: payload.sub,
+      email,
       firstName,
       lastName,
-      // Other fields remain null and can be filled later via profile update
       gender: null,
       dateOfBirth: null,
       weight: null,
@@ -160,4 +151,28 @@ export class UserService {
       relations: ['club'],
     });
   }
+}
+
+function namesFromAuth0Payload(payload: Auth0Payload): { firstName: string | null; lastName: string | null } {
+  const given = payload.given_name?.trim() || null;
+  const family = payload.family_name?.trim() || null;
+  if (given || family) {
+    return { firstName: given, lastName: family };
+  }
+
+  if (payload.name) {
+    const nameParts = payload.name.trim().split(/\s+/);
+    if (nameParts.length > 0) {
+      return {
+        firstName: nameParts[0],
+        lastName: nameParts.length > 1 ? nameParts.slice(1).join(' ') : null,
+      };
+    }
+  }
+
+  if (payload.nickname) {
+    return { firstName: payload.nickname, lastName: null };
+  }
+
+  return { firstName: null, lastName: null };
 }

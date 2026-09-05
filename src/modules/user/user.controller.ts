@@ -25,16 +25,13 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User profile', type: UserResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   async getProfile(@CurrentUserEntity() user: User): Promise<UserResponseDto> {
-    console.log('userRRRRRRRRRRRR', user);
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    // Fetch user with relations
     const fullUser = await this.userService.findById(user.id);
     if (!fullUser) {
       throw new NotFoundException('User not found');
     }
-    console.log('userRRRRRRRR22222222222222222222222222222222222RRRR', user);
 
     return UserResponseDto.fromDomain(fullUser);
   }

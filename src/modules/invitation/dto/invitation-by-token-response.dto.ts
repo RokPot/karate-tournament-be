@@ -1,5 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
+
+import { InvitationStatus } from '~common/enums';
 
 /**
  * Invitation by token response DTO
@@ -30,6 +32,21 @@ export class InvitationByTokenResponseDto {
   })
   status!: string;
 
+  @Expose()
+  @ApiProperty({
+    description: 'Invitee email',
+    example: 'owner@example.com',
+  })
+  email!: string;
+
+  @Expose()
+  @ApiPropertyOptional({ description: 'Invitee first name', example: 'Jane', nullable: true })
+  firstName!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({ description: 'Invitee last name', example: 'Doe', nullable: true })
+  lastName!: string | null;
+
   constructor(data: InvitationByTokenResponseDto) {
     Object.assign(this, data);
   }
@@ -38,6 +55,9 @@ export class InvitationByTokenResponseDto {
     club: { name: string };
     expiresAt: Date;
     status: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
   }): InvitationByTokenResponseDto {
     return new InvitationByTokenResponseDto({
       clubName: invitation.club.name,
@@ -45,7 +65,17 @@ export class InvitationByTokenResponseDto {
         invitation.expiresAt instanceof Date
           ? invitation.expiresAt.toISOString()
           : String(invitation.expiresAt),
-      status: invitation.status,
+      status: publicInvitationStatus(invitation.status, invitation.expiresAt),
+      email: invitation.email,
+      firstName: invitation.firstName,
+      lastName: invitation.lastName,
     });
   }
+}
+
+function publicInvitationStatus(status: string, expiresAt: Date): string {
+  if (status === InvitationStatus.PENDING && new Date() > expiresAt) {
+    return InvitationStatus.EXPIRED;
+  }
+  return status;
 }
