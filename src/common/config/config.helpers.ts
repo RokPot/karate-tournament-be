@@ -31,7 +31,7 @@ const ENV_REF_REGEX = /\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}/g;
 
 /**
  * Recursively replace ${env:VAR_NAME} placeholders with process.env values.
- * Used for Railway and other env-only config (no bootstrap).
+ * Used for Railway, local, and test (no bootstrap).
  */
 function resolveEnvRefs(obj: unknown): unknown {
   if (obj === null || obj === undefined) {
@@ -58,7 +58,8 @@ function resolveEnvRefs(obj: unknown): unknown {
  * do not use directly, use loadConfig with a typed config instead
  *
  * Loads and overrides the config from the following files:
- * - .config/${moduleName}.resolved.yml - generated on bootstrap
+ * - .config/${moduleName}.template.yml
+ * - .config/${moduleName}.resolved.yml - optional generated overlay
  * - .config/${moduleName}.yml - legacy
  * - .config/${moduleName}.override.yml - manually created and edited
  *

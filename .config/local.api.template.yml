@@ -1,14 +1,13 @@
 ## Configuration for STAGE=local
-##  - local.api.template.yml is commited to git and uses ${} functions
-##  - local.api.resolved.yml is generated on "yarn bootstrap --stage local"
-##  - local.api.override.yml can be used for local overrides
+##  Read at runtime from this file. Optional: local.api.override.yml (gitignored).
+##  Set STAGE=local (the default). No bootstrap step.
 
 core:
-  stage: ${func:stage}
-  release: ${func:release}
+  stage: local
+  release: ${env:RELEASE}
   webBaseUrl: 'http://localhost:3000'
   apiBaseUrl: 'http://localhost:3002'
-  service: lossdog-be
+  service: karate-app
 
 http:
   log: true
@@ -21,8 +20,8 @@ http:
   openapi:
     mode: runtime
     path: docs
-    title: LossDog Backend
-    description: LossDog Backend
+    title: Karate App
+    description: Karate App
     username: admin
     password: admin
   pagination:
@@ -69,7 +68,7 @@ invitation:
 auth0:
   domain: dev-roky.eu.auth0.com
   clientId: JIZIYl0F3z7rARQZ92Wc3ySg2KFyS1gx
-  clientSecret: V-ehWbpYuWLcA8mXHyYiMf7lRstBaDS5Az_6rncZuFUmutRvo48oYz_a3yfB4fnH
+  clientSecret: XXX
   audience: https://api.tournament-app.com
   # jwksTlsInsecure: true
 

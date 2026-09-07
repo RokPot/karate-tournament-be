@@ -11,9 +11,6 @@
     "**/*.fixture.ts",
     "**/*.mock.ts",
     "**/*.e2e.ts",
-    "**/.*.scaffold.ts",
-    "**/.scaffold.ts",
-    "**/.scaffold/*",
     "packages"
   ]
 }

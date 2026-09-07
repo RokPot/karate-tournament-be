@@ -16,7 +16,7 @@ core:
   release: ${env:RELEASE}
   webBaseUrl: ${env:WEB_BASE_URL}
   apiBaseUrl: ${env:API_BASE_URL}
-  service: lossdog-be
+  service: karate-app
 
 http:
   log: true
@@ -29,8 +29,8 @@ http:
   openapi:
     mode: runtime
     path: docs
-    title: LossDog Backend
-    description: LossDog Backend
+    title: Karate App
+    description: Karate App
     username: admin
     password: admin
   pagination:

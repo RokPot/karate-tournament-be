@@ -1,4 +1,4 @@
-# LossDog - Backend
+# Karate App
 
 Follow the instructions below to get started.
 
@@ -27,9 +27,6 @@ corepack enable
 ```bash
 # Install project packages
 yarn
-
-# Prepare local config template
-yarn bootstrap
 
 # Start the dependent services in docker (PostgreSQL)
 # This will start PostgreSQL and create the database automatically
@@ -92,11 +89,7 @@ yarn start:dev
 ## Testing
 
 ### Initial Setup
-Run this once before running the tests
-```bash
-STAGE=test yarn bootstrap
-# Database migrations will run automatically if autoMigrate is enabled
-```
+Ensure PostgreSQL for tests is running. Database migrations run automatically if autoMigrate is enabled.
 
 ### Run tests
 
@@ -136,6 +129,3 @@ Add to package.json the following script: `"openapi:lint": "yarn openapi-codegen
 Replace the port to the port where this project is running.
 
 Run command `yarn openapi:lint`
-
-## Temporal
-Go to src/modules/temporal/README.md

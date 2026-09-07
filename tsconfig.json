@@ -37,9 +37,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/.*.scaffold.ts",
-    "**/.scaffold.ts",
-    "**/.scaffold/*",
     "packages",
     "**/*.unit.ts",
     "**/*.e2e.ts",

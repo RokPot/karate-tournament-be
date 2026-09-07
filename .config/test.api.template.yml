@@ -1,14 +1,12 @@
 ## Configuration for STAGE=test
-##  - test.api.template.yml is commited to git and uses ${} functions
-##  - test.api.resolved.yml is generated on "yarn bootstrap --stage test"
-##  - test.api.override.yml can be used for local overrides
+##  Read at runtime from this file. Set STAGE=test. No bootstrap step.
 
 core:
   stage: test
-  release: ${func:release}
+  release: ${env:RELEASE}
   webBaseUrl: 'http://localhost:8000'
   apiBaseUrl: 'http://localhost:3000'
-  service: lossdog-be
+  service: karate-app
 
 http:
   log: true
@@ -20,8 +18,8 @@ http:
     maxAge: 3600
   openapi:
     mode: disabled
-    title: LossDog Backend
-    description: LossDog Backend
+    title: Karate App
+    description: Karate App
     username: admin
     password: admin
 

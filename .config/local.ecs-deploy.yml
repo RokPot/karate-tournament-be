@@ -1,9 +1,0 @@
-# ECS Deploy configuration file for STAGE=local
-# @see https://github.com/povio/ecs-deploy-cli/tree/v4?tab=readme-ov-file#configure
-
-# resolved at runtime using `ecs-deploy config api --stage local`
-configs:
-  - name: api
-    region: us-east-1
-    destination: ./.config/local.api.resolved.yml
-    template: api.template

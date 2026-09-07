@@ -10,7 +10,7 @@ import { AuthenticatedSocket } from '~common/websocket/types/authenticated-socke
 
 import { SocketIOService } from './socketio.service';
 
-export const SOCKET_GATEWAY_NAMESPACE = 'lossdog';
+export const SOCKET_GATEWAY_NAMESPACE = 'karate-app';
 
 @WebSocketGateway({
   cors: true,

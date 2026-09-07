@@ -88,14 +88,11 @@ resources:
 tools:
 
 # Configuration and Environment variables
-# AWS specific, see ./02_Config.md
+# See ./04_Config.md
 .config:
-    # Deployment and env prep definitions
-    '[STAGE].ecs-deploy.yml':
-    # Configuration
-    '[STAGE].api.template.yml': # template for configuration
-    '[STAGE].api.resolved.yml': # generated at boot
-    '[STAGE].api.override.yml': # local override
+    '[STAGE].api.template.yml': # committed defaults; ${env:VAR} interpolated at runtime
+    '[STAGE].api.resolved.yml': # optional overlay, never committed
+    '[STAGE].api.override.yml': # local secrets, never committed
 
 ```
 

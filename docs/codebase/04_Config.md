@@ -3,63 +3,44 @@
 ## Core principles
 
 A Stage is a set of configurations that define the environment in which the application is running. The stage is
-defined by the `STAGE` environment variable. Usually we name it as an abbreviation of the project name and the
-environment (e.g. `myapp-dev`).
+defined by the `STAGE` environment variable.
 
-To guarantee reproducibility, we always define all the variables in the current stage inside a configuration file,
-that is generated at runtime and before booting the app. This config file is then read at runtime and used to set
-the environment.
+This app uses:
+
+- `local` — local development (default)
+- `test` — tests
+- `railway` — Railway deploy
 
 The application is expected to fail fast if the configuration is not present or is invalid. This is to prevent
 the application from running in an unknown state.
 
 ### Environment variables
 
-Environment variables are fully resolved at `bootstrap` and written into a temporary file.
+Config is loaded at runtime from YAML. Values matching `${env:VARIABLE_NAME}` are replaced from `process.env`.
 
-_Preferably, no other environments variables should be used_.
+The following files are merged in order (later wins):
 
-The following files are used to generate the configuration:
+ - `.config/${process.env.STAGE}.api.template.yml`
+   - committed to the repository
+   - interpolate from the system environment with `${env:VARIABLE_NAME}`
+ - `.config/${process.env.STAGE}.api.resolved.yml`
+   - optional overlay, never committed
+ - `.config/${process.env.STAGE}.api.override.yml`
+   - strictly manually created, never committed (use this for local secrets)
 
- - `.config/${process.env.STAGE}.api.template.yaml`
-   - serves as a base, includes interpolation variables, and is commited to the repository
-   - to interpolate a variable from the system environment, use the `${env:VARIABLE_NAME}` syntax
- - `.config/${process.env.STAGE}.api.resolved.yaml`
-   - generated at `bootstrap`, with all variables resolved, never committed
- - `.config/${process.env.STAGE}.api.override.yaml`
-   - strictly manually created, never committed
-
-Locally, the `local` and `test` STAGE is used by default.
+Put Auth0 and other secrets in `local.api.override.yml`, not in the committed template.
 
 ### Validation
 
 Each module should validate the configuration at boot. For this purpose, a `~common/config` module is available that
 can be used to extract the configuration and validate it. General purpose validation is in `~common/validate`.
 
-## Providers
+## Railway
 
-All providers should inject into the `bootstrap` scripts:
+Set `STAGE=railway` and the env vars listed in `.config/railway.api.template.yml` (Auth0, `DATABASE_URL`, etc.).
+No bootstrap step.
 
-```bash
-yarn bootstrap --stage myapp-dev
-```
+## Local
 
-_For alternative setups, not described below, stick to the core principles described above._
-
-### AWS ECS
-
-By default, we use [ecs-deploy-cli](https://github.com/poviolabs/ecs-deploy-cli) to deploy to AWS ECS. The configuration
-is defined in `.config/${process.env.STAGE}.ecs-deploy.yaml` - this includes:
-
-- environment variables generation at boot, that can be sourced from AWS Secrets Manager or SSM
-- ECS task definition generation, that is based of a base task definition (defined in SSM)
-- Dockerfile build and push to ECR
-
-```bash
-yarn ecs-deploy build api --stage myapp-dev
-yarn ecs-deploy deploy api --stage myapp-dev
-yarn ecs-deploy bootstrap --stage myapp-dev
-```
-
-
-
+Set `STAGE=local` (the default). Edit `.config/local.api.template.yml` for non-secret defaults, and
+`.config/local.api.override.yml` for secrets.
