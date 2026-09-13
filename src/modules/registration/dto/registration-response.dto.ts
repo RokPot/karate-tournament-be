@@ -7,6 +7,23 @@ import { UserResponseDto } from '../../user/dto/user-response.dto';
 import { ClubResponseDto } from '../../club/dto/club-response.dto';
 import { Registration } from '../registration.entity';
 
+export class TeamMembershipDto {
+  @Expose()
+  @ApiProperty({
+    description: 'Team ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  teamId!: string;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Role on this team roster',
+    enum: TeamRole,
+    example: TeamRole.STARTER,
+  })
+  teamRole!: TeamRole;
+}
+
 /**
  * Registration Response DTO
  * Data transfer object for registration responses.
@@ -66,7 +83,7 @@ export class RegistrationResponseDto {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Team ID when this registration is part of a team roster',
+    description: 'First team ID when this registration is on one or more team rosters',
     example: '123e4567-e89b-12d3-a456-426614174000',
     nullable: true,
   })
@@ -74,12 +91,20 @@ export class RegistrationResponseDto {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Role on the team roster',
+    description: 'Role on the first team roster',
     enum: TeamRole,
     example: TeamRole.STARTER,
     nullable: true,
   })
   teamRole!: TeamRole | null;
+
+  @Expose()
+  @Type(() => TeamMembershipDto)
+  @ApiPropertyOptional({
+    description: 'All team roster memberships for this registration (a person may be on overlapping teams)',
+    type: [TeamMembershipDto],
+  })
+  teamMemberships!: TeamMembershipDto[];
 
   @Expose()
   @Type(() => UserResponseDto)
@@ -125,6 +150,17 @@ export class RegistrationResponseDto {
    * Creates a RegistrationResponseDto instance from a Registration entity
    */
   static fromDomain(registration: Registration): RegistrationResponseDto {
+    const teamMemberships =
+      registration.teamMembers?.length > 0
+        ? registration.teamMembers.map((member) => ({
+            teamId: member.teamId,
+            teamRole: member.role,
+          }))
+        : registration.teamId && registration.teamRole
+          ? [{ teamId: registration.teamId, teamRole: registration.teamRole }]
+          : [];
+    const firstMembership = teamMemberships[0];
+
     return new RegistrationResponseDto({
       id: registration.id,
       userId: registration.userId,
@@ -136,8 +172,9 @@ export class RegistrationResponseDto {
         registration.finalWeight != null && typeof registration.finalWeight === 'string'
           ? parseFloat(registration.finalWeight)
           : registration.finalWeight,
-      teamId: registration.teamId ?? null,
-      teamRole: registration.teamRole ?? null,
+      teamId: firstMembership?.teamId ?? null,
+      teamRole: firstMembership?.teamRole ?? null,
+      teamMemberships,
       user: registration.user ? UserResponseDto.fromDomain(registration.user) : null,
       club: registration.club ? ClubResponseDto.fromDomain(registration.club) : null,
       createdAt: registration.createdAt instanceof Date ? registration.createdAt.toISOString() : String(registration.createdAt || ''),

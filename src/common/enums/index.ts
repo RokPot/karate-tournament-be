@@ -86,3 +86,28 @@ export enum TeamRole {
   STARTER = 'starter',
   RESERVE = 'reserve',
 }
+
+export enum ScheduleKind {
+  SINGLE_ELIMINATION = 'single_elimination',
+}
+
+export enum GameSlotKind {
+  ITEM = 'item',
+  BYE = 'bye',
+  TBD = 'tbd',
+}
+
+export enum GameSlotOutcome {
+  WINNER = 'winner',
+  LOSER = 'loser',
+}
+
+export enum GameWinnerSide {
+  ITEM = 'item',
+  ITEM2 = 'item2',
+}
+
+export enum CompetitorKind {
+  REGISTRATION = 'registration',
+  TEAM = 'team',
+}

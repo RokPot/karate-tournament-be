@@ -18,7 +18,7 @@ import { numericTransformer } from '~database/transformers/numeric.transformer';
 import { AuditLog } from '../audit-log/audit-log.entity';
 import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
-import { Score } from '../score/score.entity';
+import { Score } from '../schedule/score.entity';
 
 /**
  * User Entity

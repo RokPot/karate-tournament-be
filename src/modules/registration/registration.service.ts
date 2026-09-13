@@ -26,6 +26,7 @@ import { CreateRegistrationWithUserDto } from './dto/create-registration-with-us
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
 import { Registration } from './registration.entity';
+import { TeamMember } from './team-member.entity';
 import { Team } from './team.entity';
 import { userFitsCategory, validateUserFitsCategory } from './validators/category-eligibility.validator';
 
@@ -50,6 +51,7 @@ export interface FindOrCreateBulkParticipantParams {
   dateOfBirth: string;
   gender?: Gender;
   beltLevel?: BeltLevel;
+  rolesToAdd?: UserRole[];
 }
 
 export interface CreateRegistrationForUserParams {
@@ -164,6 +166,8 @@ export class RegistrationService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Team)
     private readonly teamRepository: Repository<Team>,
+    @InjectRepository(TeamMember)
+    private readonly teamMemberRepository: Repository<TeamMember>,
     private readonly userService: UserService,
   ) {}
 
@@ -255,6 +259,7 @@ export class RegistrationService {
       gender: params.gender,
       beltLevel: params.beltLevel,
       clubId: params.clubId,
+      rolesToAdd: params.rolesToAdd,
     });
   }
 
@@ -416,6 +421,7 @@ export class RegistrationService {
           dateOfBirth: participant.dateOfBirth,
           gender: participant.gender,
           beltLevel: participant.beltLevel,
+          rolesToAdd: [UserRole.CLUB_MEMBER],
         });
         participantUsers[participantIndex] = user;
       } catch (error) {
@@ -481,7 +487,6 @@ export class RegistrationService {
     const participantCount = data.participants.length;
     const categoriesById = new Map(tournamentCategories.map((category) => [category.id, category]));
     const teamDisciplines = new Set<Discipline>([Discipline.KATA_TEAM, Discipline.KUMITE_TEAM]);
-    const membersByCategory = new Map<string, Set<number>>();
     const rostersByCategory = new Map<string, Set<string>>();
 
     teams.forEach((team, teamIndex) => {
@@ -515,15 +520,6 @@ export class RegistrationService {
         }
         seenOnTeam.add(participantIndex);
 
-        const categoryMembers = membersByCategory.get(team.categoryId) ?? new Set<number>();
-        if (categoryMembers.has(participantIndex)) {
-          throw new BadRequestException(
-            `Team ${teamIndex}: participant ${participantIndex} is already on another team in this category`,
-          );
-        }
-        categoryMembers.add(participantIndex);
-        membersByCategory.set(team.categoryId, categoryMembers);
-
         const participant = data.participants[participantIndex];
         const syntheticUser = this.toSyntheticUser(participant);
         if (!userFitsCategory(syntheticUser, category, participant.weight, tournamentStartDate)) {
@@ -536,7 +532,7 @@ export class RegistrationService {
       const rosterKey = [...allIndexes].sort((a, b) => a - b).join(',');
       const existingRosters = rostersByCategory.get(team.categoryId) ?? new Set<string>();
       if (existingRosters.has(rosterKey)) {
-        throw new BadRequestException(`Team ${teamIndex}: duplicate roster in this category`);
+        throw new BadRequestException(`Team ${teamIndex}: identical roster already submitted in this category`);
       }
       existingRosters.add(rosterKey);
       rostersByCategory.set(team.categoryId, existingRosters);
@@ -550,21 +546,16 @@ export class RegistrationService {
   ): Promise<void> {
     const stored = await this.teamRepository.find({
       where: { tournamentId },
-      relations: ['registrations'],
+      relations: ['members', 'members.registration', 'registrations'],
     });
     const storedRostersByCategory = new Map<string, Set<string>>();
-    const storedMembersByCategory = new Map<string, Set<string>>();
 
     for (const team of stored) {
-      const userIds = (team.registrations ?? []).map((registration) => registration.userId).sort();
-      const rosterKey = userIds.join(',');
+      const userIds = this.teamMemberUserIds(team);
+      const rosterKey = [...userIds].sort().join(',');
       const rosters = storedRostersByCategory.get(team.categoryId) ?? new Set<string>();
       rosters.add(rosterKey);
       storedRostersByCategory.set(team.categoryId, rosters);
-
-      const members = storedMembersByCategory.get(team.categoryId) ?? new Set<string>();
-      userIds.forEach((userId) => members.add(userId));
-      storedMembersByCategory.set(team.categoryId, members);
     }
 
     teams.forEach((team, teamIndex) => {
@@ -574,21 +565,27 @@ export class RegistrationService {
         if (!user) {
           throw new BadRequestException(`Team ${teamIndex}: participant ${participantIndex} could not be created`);
         }
-        const members = storedMembersByCategory.get(team.categoryId) ?? new Set<string>();
-        if (members.has(user.id)) {
-          throw new BadRequestException(
-            `Team ${teamIndex}: participant ${participantIndex} is already on a team in this category`,
-          );
-        }
         memberUserIds.push(user.id);
       }
 
       const rosterKey = [...memberUserIds].sort().join(',');
       const existingRosters = storedRostersByCategory.get(team.categoryId) ?? new Set<string>();
       if (existingRosters.has(rosterKey)) {
-        throw new BadRequestException(`Team ${teamIndex}: duplicate roster in this category`);
+        throw new BadRequestException(`Team ${teamIndex}: identical roster already exists in this category`);
       }
+      existingRosters.add(rosterKey);
+      storedRostersByCategory.set(team.categoryId, existingRosters);
     });
+  }
+
+  private teamMemberUserIds(team: Team): string[] {
+    const fromMembers = (team.members ?? [])
+      .map((member) => member.registration?.userId)
+      .filter((userId): userId is string => !!userId);
+    if (fromMembers.length > 0) {
+      return fromMembers;
+    }
+    return (team.registrations ?? []).map((registration) => registration.userId);
   }
 
   private async persistTeams(
@@ -671,16 +668,33 @@ export class RegistrationService {
       },
     });
 
+    let registration: Registration;
     if (existing) {
-      if (existing.teamId) {
-        throw new BadRequestException('Participant is already on a team in this category');
+      if (!existing.teamId) {
+        existing.teamId = data.teamId;
+        existing.teamRole = data.teamRole;
+        registration = await this.registrationRepository.save(existing);
+      } else {
+        registration = existing;
       }
-      existing.teamId = data.teamId;
-      existing.teamRole = data.teamRole;
-      return this.registrationRepository.save(existing);
+    } else {
+      registration = await this.createRegistrationForUser(user, data);
     }
 
-    return this.createRegistrationForUser(user, data);
+    const alreadyOnThisTeam = await this.teamMemberRepository.findOne({
+      where: { teamId: data.teamId, registrationId: registration.id },
+    });
+    if (!alreadyOnThisTeam) {
+      await this.teamMemberRepository.save(
+        this.teamMemberRepository.create({
+          teamId: data.teamId,
+          registrationId: registration.id,
+          role: data.teamRole,
+        }),
+      );
+    }
+
+    return registration;
   }
 
   /**
@@ -844,7 +858,7 @@ export class RegistrationService {
   async findById(id: string): Promise<Registration | null> {
     return this.registrationRepository.findOne({
       where: { id },
-      relations: ['user', 'tournament', 'category', 'club'],
+      relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
     });
   }
 
@@ -888,7 +902,7 @@ export class RegistrationService {
         tournamentId,
         ...(categoryId ? { categoryId } : {}),
       },
-      relations: ['user', 'tournament', 'category', 'club'],
+      relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -906,7 +920,7 @@ export class RegistrationService {
         ...(filters?.tournamentId ? { tournamentId: filters.tournamentId } : {}),
         ...(filters?.status ? { status: filters.status } : {}),
       },
-      relations: ['user', 'tournament', 'category', 'club'],
+      relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
       order: { createdAt: 'DESC' },
     });
   }

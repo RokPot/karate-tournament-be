@@ -82,7 +82,7 @@ export class CategoryController {
   @ApiOperation({
     summary: 'Duplicate categories',
     description:
-      'Creates standalone copies of the specified categories. Copies scalar fields only; tournament assignments, registrations, and brackets are not duplicated.',
+      'Creates standalone copies of the specified categories. Copies scalar fields only; tournament assignments, registrations, and schedules are not duplicated.',
   })
   @ApiResponse({ status: 201, description: 'Categories duplicated successfully', type: [CategoryResponseDto] })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })

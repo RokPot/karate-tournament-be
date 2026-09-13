@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { SentryModule } from '@sentry/nestjs/setup';
 
 import { Auth0Module, Auth0Guard } from '~common/auth';
@@ -15,13 +15,14 @@ import { CategoryModule } from '~modules/category/category.module';
 import { ClubModule } from '~modules/club/club.module';
 import { InvitationModule } from '~modules/invitation/invitation.module';
 import { RegistrationModule } from '~modules/registration/registration.module';
+import { ScheduleModule } from '~modules/schedule/schedule.module';
 import { TestModule } from '~modules/test/test.module';
 import { TournamentModule } from '~modules/tournament/tournament.module';
 import { UserModule } from '~modules/user/user.module';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
+    NestScheduleModule.forRoot(),
     SentryModule.forRoot(),
     HttpHealthModule,
     LoggerModule,
@@ -38,6 +39,7 @@ import { UserModule } from '~modules/user/user.module';
     ClubModule,
     InvitationModule,
     RegistrationModule,
+    ScheduleModule,
     TournamentModule,
     CategoryModule,
     TestModule,

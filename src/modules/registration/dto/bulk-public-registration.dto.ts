@@ -76,7 +76,8 @@ export class BulkPublicRegistrationDto {
 
   @Expose()
   @ApiPropertyOptional({
-    description: 'Team rosters (kata-team / kumite-team). Participant indexes refer to participants[].',
+    description:
+      'Team rosters (kata-team / kumite-team). Participant indexes refer to participants[]. The same person may be on multiple teams; two teams in a category may not have the same set of people.',
     type: [BulkTeamDto],
   })
   @IsOptional()

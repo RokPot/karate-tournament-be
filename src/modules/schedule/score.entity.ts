@@ -1,21 +1,17 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
-import { Match } from '../match/match.entity';
 import { User } from '../user/user.entity';
-import { Registration } from '../registration/registration.entity';
 
-/**
- * Score Entity
- * Stores judge scoring or kumite points.
- */
+import { Match } from './match.entity';
+
 @Entity('scores')
 export class Score {
   @PrimaryGeneratedColumn('uuid')
@@ -25,7 +21,7 @@ export class Score {
   matchId!: string;
 
   @Column({ type: 'uuid' })
-  userId!: string; // judge or scorekeeper
+  userId!: string;
 
   @Column({ type: 'uuid' })
   competitorId!: string;
@@ -40,7 +36,7 @@ export class Score {
   kataName!: string | null;
 
   @Column({ type: 'int', nullable: true })
-  flags!: number | null; // for kata qualification rounds
+  flags!: number | null;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
@@ -48,17 +44,11 @@ export class Score {
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt!: Date;
 
-  // Relations
-  @ManyToOne(() => Match, (match) => match.scores)
+  @ManyToOne(() => Match, (match) => match.scores, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'matchId' })
   match!: Match;
 
   @ManyToOne(() => User, (user) => user.scores)
   @JoinColumn({ name: 'userId' })
   user!: User;
-
-  @ManyToOne(() => Registration)
-  @JoinColumn({ name: 'competitorId' })
-  competitor!: Registration;
 }
-

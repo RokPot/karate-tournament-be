@@ -14,6 +14,7 @@ import { Club } from '../club/club.entity';
 import { Tournament } from '../tournament/tournament.entity';
 
 import { Registration } from './registration.entity';
+import { TeamMember } from './team-member.entity';
 
 /**
  * A team roster in a tournament category (kata-team / kumite-team).
@@ -52,4 +53,7 @@ export class Team {
 
   @OneToMany(() => Registration, (registration) => registration.team)
   registrations!: Registration[];
+
+  @OneToMany(() => TeamMember, (member) => member.team)
+  members!: TeamMember[];
 }

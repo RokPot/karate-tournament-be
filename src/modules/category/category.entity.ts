@@ -13,7 +13,6 @@ import { BeltLevel, CategoryGender, Discipline, SubDiscipline } from '~common/en
 
 import { numericTransformer } from '~database/transformers/numeric.transformer';
 
-import { Bracket } from '../bracket/bracket.entity';
 import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { TournamentCategory } from '../tournament/tournament-category.entity';
@@ -94,7 +93,4 @@ export class Category {
 
   @OneToMany(() => Registration, (registration) => registration.category)
   registrations!: Registration[];
-
-  @OneToMany(() => Bracket, (bracket) => bracket.category)
-  brackets!: Bracket[];
 }

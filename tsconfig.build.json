@@ -11,6 +11,7 @@
     "**/*.fixture.ts",
     "**/*.mock.ts",
     "**/*.e2e.ts",
+    "**/*.test.ts",
     "packages"
   ]
 }

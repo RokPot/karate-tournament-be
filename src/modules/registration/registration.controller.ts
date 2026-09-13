@@ -25,7 +25,7 @@ import { MyRegistrationsQueryDto } from './dto/my-registrations-query.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
 import { PublicParticipantSuitableCategoriesItemDto } from './dto/public-participant-suitable-categories-response.dto';
 import { PublicSuitableCategoriesQueryDto } from './dto/public-suitable-categories-query.dto';
-import { RegistrationResponseDto } from './dto/registration-response.dto';
+import { RegistrationResponseDto, TeamMembershipDto } from './dto/registration-response.dto';
 import { SuitableCategoriesQueryDto } from './dto/suitable-categories-query.dto';
 import { TournamentRegistrationCountsQueryDto } from './dto/tournament-registration-counts-query.dto';
 import { TournamentRegistrationCountItemDto } from './dto/tournament-registration-counts-response.dto';
@@ -45,6 +45,7 @@ import { RegistrationService } from './registration.service';
   PublicParticipantSuitableCategoriesItemDto,
   CategorySuitableParticipantsItemDto,
   SuitableParticipantDto,
+  TeamMembershipDto,
 )
 @Controller('registrations')
 @ApiBearerAuth('Authorization')

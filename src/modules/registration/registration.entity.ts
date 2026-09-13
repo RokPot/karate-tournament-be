@@ -5,7 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  OneToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
@@ -14,12 +14,12 @@ import { RegistrationStatus, TeamRole } from '~common/enums';
 
 import { numericTransformer } from '~database/transformers/numeric.transformer';
 
-import { Bracket } from '../bracket/bracket.entity';
 import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
 import { Tournament } from '../tournament/tournament.entity';
 import { User } from '../user/user.entity';
 
+import { TeamMember } from './team-member.entity';
 import { Team } from './team.entity';
 
 /**
@@ -89,6 +89,6 @@ export class Registration {
   @JoinColumn({ name: 'teamId' })
   team!: Team | null;
 
-  @OneToOne(() => Bracket, (bracket) => bracket.registration, { nullable: true })
-  bracket!: Bracket | null;
+  @OneToMany(() => TeamMember, (member) => member.registration)
+  teamMembers!: TeamMember[];
 }
