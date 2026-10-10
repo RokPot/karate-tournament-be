@@ -8,13 +8,14 @@ import { User } from '../user/user.entity';
 
 import { AcceptInvitationResponseDto } from './dto/accept-invitation-response.dto';
 import { InvitationByTokenResponseDto } from './dto/invitation-by-token-response.dto';
+import { InvitationCreatedResponseDto } from './dto/invitation-created-response.dto';
 import { InvitationListItemDto } from './dto/invitation-list-item.dto';
 import { InvitationListQueryDto } from './dto/invitation-list-query.dto';
 import { InvitationService } from './invitation.service';
 
 /**
  * Invitation Controller
- * GET by-token is public; GET list and POST accept require Auth0 JWT.
+ * GET by-token is public; list, cancel, resend, and accept require Auth0 JWT.
  */
 @ApiTags('Invitations')
 @Controller('invitations')
@@ -60,6 +61,30 @@ export class InvitationController {
       throw new NotFoundException('User not found');
     }
     await this.invitationService.cancel(id, user);
+  }
+
+  @Post(':id/resend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resend invitation',
+    description:
+      'Issues a new token and expiry for a pending invitation (including time-expired). Admin or owner/coach of the invitation club. The previous invite URL stops working.',
+  })
+  @ApiParam({ name: 'id', description: 'Invitation ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Invitation resent', type: InvitationCreatedResponseDto })
+  @ApiResponse({ status: 400, description: 'Invitation is not pending' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
+  @ApiResponse({ status: 404, description: 'Invitation not found' })
+  async resend(
+    @Param('id') id: string,
+    @CurrentUserEntity() user: User | undefined,
+  ): Promise<InvitationCreatedResponseDto> {
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const { invitation, inviteUrl } = await this.invitationService.resend(id, user);
+    return InvitationCreatedResponseDto.fromInvitation(invitation, inviteUrl);
   }
 
   @Get('by-token/:token')

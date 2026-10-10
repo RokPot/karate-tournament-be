@@ -25,6 +25,7 @@ import { BulkTeamDto } from './dto/bulk-team.dto';
 import { CreateRegistrationWithUserDto } from './dto/create-registration-with-user.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
+import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { Registration } from './registration.entity';
 import { TeamMember } from './team-member.entity';
 import { Team } from './team.entity';
@@ -273,7 +274,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${data.tournamentId} not found`);
     }
-    this.assertTournamentApprovedForRegistration(tournament, data.unapprovedAs);
+    this.assertTournamentOpenForRegistration(tournament, data.unapprovedAs);
 
     const category = await this.categoryRepository.findOne({
       where: { id: data.categoryId },
@@ -387,7 +388,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${data.tournamentId} not found`);
     }
-    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
+    this.assertTournamentOpenForRegistration(tournament, 'not_found');
 
     const tournamentCategories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
     this.validateTeamsPayload(data, tournamentCategories, tournament.startDate);
@@ -766,7 +767,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
-    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
+    this.assertTournamentOpenForRegistration(tournament, 'not_found');
 
     return this.filterSuitableCategories(
       (tournament.categoryAssignments ?? []).map((assignment) => assignment.category),
@@ -794,7 +795,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
-    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
+    this.assertTournamentOpenForRegistration(tournament, 'not_found');
 
     const categories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
 
@@ -828,7 +829,7 @@ export class RegistrationService {
     if (!tournament) {
       throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
     }
-    this.assertTournamentApprovedForRegistration(tournament, 'not_found');
+    this.assertTournamentOpenForRegistration(tournament, 'not_found');
 
     const categories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
     const ageAtDateRef = tournament.startDate;
@@ -925,6 +926,19 @@ export class RegistrationService {
     });
   }
 
+  async findByUserForCaller(
+    userId: string,
+    caller: User,
+    filters?: { tournamentId?: string; status?: RegistrationStatus },
+  ): Promise<Registration[]> {
+    const target = await this.userService.findById(userId);
+    if (!target) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    this.assertCanReadUserRegistrations(caller, target);
+    return this.findByUser(userId, filters);
+  }
+
   /**
    * Update registration status
    */
@@ -936,6 +950,87 @@ export class RegistrationService {
 
     registration.status = status;
     return this.registrationRepository.save(registration);
+  }
+
+  async update(id: string, data: UpdateRegistrationDto, caller: User): Promise<Registration> {
+    const registration = await this.findById(id);
+    if (!registration) {
+      throw new NotFoundException(`Registration with ID ${id} not found`);
+    }
+
+    this.assertCanMutateRegistration(caller, registration);
+    this.assertTournamentOpenForRegistration(registration.tournament);
+
+    let category = registration.category;
+    if (data.categoryId !== undefined && data.categoryId !== registration.categoryId) {
+      const nextCategory = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
+      if (!nextCategory) {
+        throw new NotFoundException(`Category with ID ${data.categoryId} not found`);
+      }
+
+      const tournament = await this.tournamentRepository.findOne({
+        where: { id: registration.tournamentId },
+        relations: ['categoryAssignments'],
+      });
+      const assignedIds = (tournament?.categoryAssignments ?? []).map((assignment) => assignment.categoryId);
+      if (!assignedIds.includes(data.categoryId)) {
+        throw new NotFoundException(
+          `Category with ID ${data.categoryId} is not part of tournament ${registration.tournamentId}`,
+        );
+      }
+
+      const existing = await this.registrationRepository.findOne({
+        where: {
+          userId: registration.userId,
+          tournamentId: registration.tournamentId,
+          categoryId: data.categoryId,
+        },
+      });
+      if (existing) {
+        throw new ConflictException(
+          `Registration already exists for user ${registration.userId} in tournament ${registration.tournamentId} and category ${data.categoryId}`,
+        );
+      }
+
+      registration.categoryId = data.categoryId;
+      registration.category = nextCategory;
+      category = nextCategory;
+    }
+
+    if (data.finalWeight !== undefined) {
+      registration.finalWeight = data.finalWeight;
+    }
+    if (data.status !== undefined) {
+      registration.status = data.status;
+    }
+
+    if (data.categoryId !== undefined || data.finalWeight !== undefined) {
+      const user = registration.user ?? (await this.userService.findById(registration.userId));
+      if (!user) {
+        throw new NotFoundException(`User with ID ${registration.userId} not found`);
+      }
+      const effectiveWeight = registration.finalWeight ?? user.weight;
+      validateUserFitsCategory(user, category, effectiveWeight, registration.tournament.startDate);
+    }
+
+    await this.registrationRepository.save(registration);
+    const full = await this.findById(id);
+    if (!full) {
+      throw new NotFoundException(`Registration with ID ${id} not found`);
+    }
+    return full;
+  }
+
+  async delete(id: string, caller: User): Promise<void> {
+    const registration = await this.findById(id);
+    if (!registration) {
+      throw new NotFoundException(`Registration with ID ${id} not found`);
+    }
+
+    this.assertCanMutateRegistration(caller, registration);
+    this.assertTournamentOpenForRegistration(registration.tournament);
+    await this.registrationRepository.delete(id);
+    this.logger.log(`Deleted registration ${id}`);
   }
 
   /**
@@ -991,11 +1086,39 @@ export class RegistrationService {
     }
   }
 
-  private assertTournamentApprovedForRegistration(
+  private assertCanMutateRegistration(user: User, registration: Registration): void {
+    if (isAdmin(user.roles)) {
+      return;
+    }
+    if (isClubStaff(user.roles) && user.clubId) {
+      if (registration.clubId && user.clubId === registration.clubId) {
+        return;
+      }
+      if (registration.tournament?.clubId && user.clubId === registration.tournament.clubId) {
+        return;
+      }
+    }
+    throw new ForbiddenException('Insufficient permissions to change this registration');
+  }
+
+  private assertCanReadUserRegistrations(caller: User, target: User): void {
+    if (caller.id === target.id) {
+      return;
+    }
+    if (isAdmin(caller.roles)) {
+      return;
+    }
+    if (isClubStaff(caller.roles) && caller.clubId && target.clubId === caller.clubId) {
+      return;
+    }
+    throw new ForbiddenException('Insufficient permissions to list registrations for this user');
+  }
+
+  private assertTournamentOpenForRegistration(
     tournament: Tournament,
     unapprovedAs: 'not_found' | 'bad_request' = 'bad_request',
   ): void {
-    if (tournament.status === TournamentStatus.APPROVED) {
+    if (tournament.status === TournamentStatus.APPROVED || tournament.status === TournamentStatus.IN_PROGRESS) {
       return;
     }
     if (unapprovedAs === 'not_found') {

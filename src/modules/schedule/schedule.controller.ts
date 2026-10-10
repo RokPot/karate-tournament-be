@@ -60,6 +60,33 @@ export class ScheduleController {
     return ScheduleResponseDto.fromDomain(schedule, competitors);
   }
 
+  @Post('regenerate')
+  @ApiOperation({
+    summary: 'Regenerate the single-elimination schedule',
+    description:
+      'Admin or owning club staff. Tournament must be in_progress. Deletes the existing schedule (games, matches, and scores) and rebuilds from current participants. 409 if no schedule exists yet.',
+  })
+  @ApiParam({ name: 'tournamentId', description: 'Tournament ID' })
+  @ApiParam({ name: 'categoryId', description: 'Category ID' })
+  @ApiResponse({ status: 200, description: 'Schedule regenerated', type: ScheduleResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - tournament not in progress or too few participants' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Tournament or category not found' })
+  @ApiResponse({ status: 409, description: 'Schedule does not exist' })
+  async regenerate(
+    @CurrentUserEntity() currentUser: User,
+    @Param('tournamentId') tournamentId: string,
+    @Param('categoryId') categoryId: string,
+  ): Promise<ScheduleResponseDto> {
+    const caller = this.requireUser(currentUser);
+    const tournament = await this.tournamentService.findByIdOrFail(tournamentId);
+    this.assertCanMutateSchedule(caller, tournament.clubId);
+    const schedule = await this.scheduleService.regenerate(tournamentId, categoryId);
+    const competitors = await this.scheduleService.loadCompetitorRefs(schedule);
+    return ScheduleResponseDto.fromDomain(schedule, competitors);
+  }
+
   @Get()
   @ApiOperation({
     summary: 'Get the schedule for a tournament category',

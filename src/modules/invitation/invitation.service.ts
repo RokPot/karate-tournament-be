@@ -18,7 +18,7 @@ const INVITATION_EXPIRY_DAYS = 7;
 
 /**
  * Invitation Service
- * Handles invitation creation (from club create), lookup by token, and accept.
+ * Handles invitation creation, resend, lookup by token, and accept.
  */
 @Injectable()
 export class InvitationService {
@@ -98,10 +98,7 @@ export class InvitationService {
     await this.invitationRepository.save(invitation);
     this.logger.log(`Created invitation for club ${clubId}, email ${email}`);
 
-    const baseUrl = this.invitationConfig.frontendBaseUrl.replace(/\/$/, '');
-    const inviteUrl = `${baseUrl}/invite/${token}`;
-
-    return { token, inviteUrl };
+    return { token, inviteUrl: this.buildInviteUrl(token) };
   }
 
   /**
@@ -177,6 +174,40 @@ export class InvitationService {
   }
 
   /**
+   * Rotate token and expiry on a pending invitation (including time-expired).
+   */
+  async resend(id: string, user: User): Promise<{ invitation: Invitation; inviteUrl: string }> {
+    const invitation = await this.invitationRepository.findOne({
+      where: { id },
+      relations: ['club'],
+    });
+    if (!invitation) {
+      throw new NotFoundException(`Invitation with ID ${id} not found`);
+    }
+
+    if (!isAdmin(user.roles)) {
+      if (!isClubStaff(user.roles) || !user.clubId || user.clubId !== invitation.clubId) {
+        throw new ForbiddenException('Cannot resend an invitation for another club');
+      }
+    }
+
+    if (invitation.status !== InvitationStatus.PENDING) {
+      throw new BadRequestException('Only pending invitations can be resent');
+    }
+
+    const token = randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS);
+
+    invitation.token = token;
+    invitation.expiresAt = expiresAt;
+    await this.invitationRepository.save(invitation);
+    this.logger.log(`Invitation ${invitation.id} resent by user ${user.id}`);
+
+    return { invitation, inviteUrl: this.buildInviteUrl(token) };
+  }
+
+  /**
    * Find invitation by token (for public GET by-token).
    * Returns the row if the token exists, including expired / accepted / cancelled.
    */
@@ -246,5 +277,10 @@ export class InvitationService {
     this.logger.log(`Invitation ${invitation.id} accepted by user ${user.id} for club ${invitation.clubId}`);
 
     return { user: updatedUser, club };
+  }
+
+  private buildInviteUrl(token: string): string {
+    const baseUrl = this.invitationConfig.frontendBaseUrl.replace(/\/$/, '');
+    return `${baseUrl}/invite/${token}`;
   }
 }

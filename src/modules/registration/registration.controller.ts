@@ -1,4 +1,16 @@
-import { Body, Controller, Get, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiExtraModels, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { Public } from '~common/auth';
@@ -30,6 +42,8 @@ import { SuitableCategoriesQueryDto } from './dto/suitable-categories-query.dto'
 import { TournamentRegistrationCountsQueryDto } from './dto/tournament-registration-counts-query.dto';
 import { TournamentRegistrationCountItemDto } from './dto/tournament-registration-counts-response.dto';
 import { TournamentRegistrationsQueryDto } from './dto/tournament-registrations-query.dto';
+import { UpdateRegistrationDto } from './dto/update-registration.dto';
+import { UserRegistrationsQueryDto } from './dto/user-registrations-query.dto';
 import { RegistrationService } from './registration.service';
 
 /**
@@ -290,6 +304,30 @@ export class RegistrationController {
     return registrations.map((r) => RegistrationResponseDto.fromDomain(r));
   }
 
+  @Get('by-user')
+  @ApiOperation({
+    summary: 'List registrations for a user',
+    description:
+      "Returns registrations for the given user. Caller must be the user, an admin, or club staff of the user's current club. Optionally filter by tournamentId and status.",
+  })
+  @ApiResponse({ status: 200, description: 'Registrations list', type: [RegistrationResponseDto] })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async findByUser(
+    @CurrentUserEntity() currentUser: User,
+    @Query() query: UserRegistrationsQueryDto,
+  ): Promise<RegistrationResponseDto[]> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const registrations = await this.registrationService.findByUserForCaller(query.userId, currentUser, {
+      tournamentId: query.tournamentId,
+      status: query.status,
+    });
+    return registrations.map((r) => RegistrationResponseDto.fromDomain(r));
+  }
+
   @Get('suitable-categories')
   @ApiOperation({
     summary: 'Get categories suitable for a user in a tournament',
@@ -341,5 +379,48 @@ export class RegistrationController {
       throw new NotFoundException(`Registration with ID ${id} not found`);
     }
     return RegistrationResponseDto.fromDomain(registration);
+  }
+
+  @Put(':id')
+  @ApiOperation({
+    summary: 'Update a registration',
+    description:
+      'Updates category, final weight, and/or status. Admin, staff of the registering club, or staff of the hosting club. Tournament must be approved or in progress. Category schedule is not updated automatically.',
+  })
+  @ApiResponse({ status: 200, description: 'Registration updated', type: RegistrationResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed or registration not open' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Registration, category, or user not found' })
+  @ApiResponse({ status: 409, description: 'Conflict - registration already exists for the new category' })
+  async update(
+    @CurrentUserEntity() currentUser: User,
+    @Param('id') id: string,
+    @Body() updateRegistrationDto: UpdateRegistrationDto,
+  ): Promise<RegistrationResponseDto> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const registration = await this.registrationService.update(id, updateRegistrationDto, currentUser);
+    return RegistrationResponseDto.fromDomain(registration);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete a registration',
+    description:
+      'Removes a registration. Admin, staff of the registering club, or staff of the hosting club. Tournament must be approved or in progress. Team roster rows for this registration are removed. Category schedule is not updated automatically.',
+  })
+  @ApiResponse({ status: 204, description: 'Registration deleted' })
+  @ApiResponse({ status: 400, description: 'Bad request - registration not open' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Registration not found' })
+  async remove(@CurrentUserEntity() currentUser: User, @Param('id') id: string): Promise<void> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    await this.registrationService.delete(id, currentUser);
   }
 }

@@ -30,6 +30,7 @@ import { ClubResponseDto } from './dto/club-response.dto';
 import { CreateClubDto } from './dto/create-club.dto';
 import { GetMembersQueryDto } from './dto/get-members-query.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
+import { UpdateMemberDto } from './dto/update-member.dto';
 
 /**
  * Club Controller
@@ -149,6 +150,54 @@ export class ClubController {
     requireClubStaffOf(caller.roles, caller.clubId, id);
     const users = await this.clubService.getMembers(id, query.role);
     return users.map((user) => UserResponseDto.fromDomain(user));
+  }
+
+  @Put(':id/members/:userId')
+  @ApiOperation({
+    summary: 'Update a club member',
+    description: 'Updates a member of the club. Admin or club owner/coach of this club.',
+  })
+  @ApiParam({ name: 'id', description: 'Club ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiParam({ name: 'userId', description: 'Member user ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Member updated', type: UserResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed or last club owner' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
+  @ApiResponse({ status: 404, description: 'Club or member not found' })
+  async updateMember(
+    @CurrentUserEntity() currentUser: User,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() updateMemberDto: UpdateMemberDto,
+  ): Promise<UserResponseDto> {
+    const caller = this.requireUser(currentUser);
+    requireClubStaffOf(caller.roles, caller.clubId, id);
+    const member = await this.clubService.updateMember(id, userId, updateMemberDto);
+    return UserResponseDto.fromDomain(member);
+  }
+
+  @Delete(':id/members/:userId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Remove a member from the club',
+    description:
+      'Unlinks the user from the club without deleting them. Registrations are kept. Admin or club owner/coach of this club.',
+  })
+  @ApiParam({ name: 'id', description: 'Club ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiParam({ name: 'userId', description: 'Member user ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 204, description: 'Member removed from club' })
+  @ApiResponse({ status: 400, description: 'Bad request - last club owner' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role, another club, or self-removal' })
+  @ApiResponse({ status: 404, description: 'Club or member not found' })
+  async removeMember(
+    @CurrentUserEntity() currentUser: User,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ): Promise<void> {
+    const caller = this.requireUser(currentUser);
+    requireClubStaffOf(caller.roles, caller.clubId, id);
+    await this.clubService.removeMember(id, userId, caller.id);
   }
 
   @Get(':id/tournaments')

@@ -6,7 +6,7 @@ import { Invitation } from '../invitation.entity';
 import { InvitationListItemDto } from './invitation-list-item.dto';
 
 /**
- * Created invitation plus invite URL for POST /clubs/:id/invitations.
+ * Invitation plus invite URL for POST /clubs/:id/invitations and POST /invitations/:id/resend.
  */
 export class InvitationCreatedResponseDto extends InvitationListItemDto {
   @Expose()

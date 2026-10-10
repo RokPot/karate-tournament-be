@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { isClubOwner } from '~common/auth';
 import { UserRole } from '~common/enums';
 
 import { InvitationService } from '../invitation/invitation.service';
@@ -12,6 +13,9 @@ import { UserService } from '../user/user.service';
 import { Club } from './club.entity';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateClubDto } from './dto/create-club.dto';
+import { UpdateMemberDto } from './dto/update-member.dto';
+
+const CLUB_SCOPED_ROLES: UserRole[] = [UserRole.CLUB_OWNER, UserRole.CLUB_COACH, UserRole.CLUB_MEMBER];
 
 export interface CreateClubResult {
   club: Club;
@@ -137,6 +141,49 @@ export class ClubService {
   }
 
   /**
+   * Update a club member's profile. Target user must belong to this club.
+   */
+  async updateMember(clubId: string, userId: string, dto: UpdateMemberDto): Promise<User> {
+    const member = await this.findMemberOfClubOrFail(clubId, userId);
+
+    if (dto.role !== undefined && dto.role !== UserRole.CLUB_OWNER && isClubOwner(member.roles)) {
+      await this.assertNotLastClubOwner(clubId);
+    }
+
+    const updated = await this.userService.update(userId, {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: dto.email,
+      gender: dto.gender,
+      dateOfBirth: dto.dateOfBirth,
+      weight: dto.weight,
+      beltLevel: dto.beltLevel,
+      ...(dto.role !== undefined ? { roles: [dto.role] } : {}),
+    });
+    return updated;
+  }
+
+  /**
+   * Remove a member from the club (unlink). Keeps the user and their registrations.
+   */
+  async removeMember(clubId: string, userId: string, callerId: string): Promise<void> {
+    const member = await this.findMemberOfClubOrFail(clubId, userId);
+
+    if (member.id === callerId) {
+      throw new ForbiddenException('Cannot remove yourself from the club');
+    }
+    if (isClubOwner(member.roles)) {
+      await this.assertNotLastClubOwner(clubId);
+    }
+
+    member.clubId = null;
+    member.club = null;
+    member.roles = (member.roles ?? []).filter((role) => !CLUB_SCOPED_ROLES.includes(role));
+    await this.userRepository.save(member);
+    this.logger.log(`Unlinked user ${userId} from club ${clubId}`);
+  }
+
+  /**
    * Get members (users) of a club. When role is provided, only members with that role are returned (filtered in DB).
    */
   async getMembers(clubId: string, role?: UserRole | null): Promise<User[]> {
@@ -173,5 +220,25 @@ export class ClubService {
         },
       },
     });
+  }
+
+  private async findMemberOfClubOrFail(clubId: string, userId: string): Promise<User> {
+    await this.findByIdOrFail(clubId);
+    const member = await this.userService.findById(userId);
+    if (!member || member.clubId !== clubId) {
+      throw new NotFoundException(`Member with ID ${userId} not found in club ${clubId}`);
+    }
+    return member;
+  }
+
+  private async assertNotLastClubOwner(clubId: string): Promise<void> {
+    const ownerCount = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.clubId = :clubId', { clubId })
+      .andWhere('user.roles @> ARRAY[:role]::"users_roles_enum"[]', { role: UserRole.CLUB_OWNER })
+      .getCount();
+    if (ownerCount <= 1) {
+      throw new BadRequestException('Cannot remove the last club owner from this club');
+    }
   }
 }
