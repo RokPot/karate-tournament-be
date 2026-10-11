@@ -8,6 +8,10 @@
       {
         "include": "**/*.ejs",
         "watchAssets": true
+      },
+      {
+        "include": "email-templates/**/*.html",
+        "watchAssets": true
       }
     ],
     "plugins": [

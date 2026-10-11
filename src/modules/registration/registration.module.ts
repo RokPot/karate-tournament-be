@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { MailModule } from '~common/mail';
+
 import { UserModule } from '../user/user.module';
 import { User } from '../user/user.entity';
 import { Tournament } from '../tournament/tournament.entity';
@@ -20,6 +22,7 @@ import { Team } from './team.entity';
   imports: [
     TypeOrmModule.forFeature([Registration, Team, TeamMember, Tournament, Category, Club, User]),
     UserModule,
+    MailModule,
   ],
   controllers: [RegistrationController],
   providers: [RegistrationService],

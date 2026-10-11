@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getConfigFactory } from '~common/config';
+import { MailModule } from '~common/mail';
 
 import { Club } from '../club/club.entity';
 import { User } from '../user/user.entity';
@@ -16,10 +17,7 @@ import { InvitationController } from './invitation.controller';
  * Handles club owner invitations: create (from club create), get by token (public), accept (auth).
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Invitation, Club, User]),
-    //
-  ],
+  imports: [TypeOrmModule.forFeature([Invitation, Club, User]), MailModule],
   controllers: [InvitationController],
   providers: [getConfigFactory(InvitationConfig), InvitationService],
   exports: [InvitationService, TypeOrmModule],

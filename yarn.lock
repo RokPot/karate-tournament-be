@@ -3617,6 +3617,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/nodemailer@npm:^8.0.2":
+  version: 8.0.2
+  resolution: "@types/nodemailer@npm:8.0.2"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/1ad3f83ac130cf9af65ce9eb7985b08b27b4723316c2be621522effc31c63d7d2d76880815490499fbe8b1aff3da889d24b54b3db892526d1166b12702404ff0
+  languageName: node
+  linkType: hard
+
 "@types/passport-jwt@npm:^4.0.1":
   version: 4.0.1
   resolution: "@types/passport-jwt@npm:4.0.1"
@@ -7692,6 +7701,7 @@ __metadata:
     "@types/mime-types": "npm:^2.1.4"
     "@types/multer": "npm:^1.4.12"
     "@types/node": "npm:^22.13.5"
+    "@types/nodemailer": "npm:^8.0.2"
     "@types/passport-jwt": "npm:^4.0.1"
     "@types/pg": "npm:^8.11.10"
     "@types/request-ip": "npm:^0.0.41"
@@ -7720,6 +7730,7 @@ __metadata:
     luxon: "npm:^3.6.1"
     mime-types: "npm:^2.1.35"
     nestjs-form-data: "npm:^1.9.93"
+    nodemailer: "npm:^10.1.0"
     passport: "npm:^0.7.0"
     passport-jwt: "npm:^4.0.1"
     pdf-parse: "npm:^1.1.1"
@@ -8393,6 +8404,13 @@ __metadata:
   version: 2.0.18
   resolution: "node-releases@npm:2.0.18"
   checksum: 10c0/786ac9db9d7226339e1dc84bbb42007cb054a346bd9257e6aa154d294f01bc6a6cddb1348fa099f079be6580acbb470e3c048effd5f719325abd0179e566fd27
+  languageName: node
+  linkType: hard
+
+"nodemailer@npm:^10.1.0":
+  version: 10.1.0
+  resolution: "nodemailer@npm:10.1.0"
+  checksum: 10c0/5715e92c8abc117df26ac97e1b55a571a5442afb995d38c1385d03dabfd0d538939f7db1246494af212e3e0351f23d8d17918b6bd85b8a76b56be1232162b8db
   languageName: node
   linkType: hard
 

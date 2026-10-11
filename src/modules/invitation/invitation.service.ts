@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 
 import { isAdmin, isClubStaff } from '~common/auth';
 import { InvitationStatus, UserRole } from '~common/enums';
+import { MailService } from '~common/mail';
 
 import { Club } from '../club/club.entity';
 import { User } from '../user/user.entity';
@@ -32,6 +33,7 @@ export class InvitationService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly invitationConfig: InvitationConfig,
+    private readonly mailService: MailService,
   ) {}
 
   /**
@@ -98,7 +100,17 @@ export class InvitationService {
     await this.invitationRepository.save(invitation);
     this.logger.log(`Created invitation for club ${clubId}, email ${email}`);
 
-    return { token, inviteUrl: this.buildInviteUrl(token) };
+    const inviteUrl = this.buildInviteUrl(token);
+    const club = await this.clubRepository.findOne({ where: { id: clubId } });
+    await this.mailService.sendInvitation({
+      to: invitation.email,
+      clubName: club?.name ?? 'a club',
+      inviteUrl,
+      firstName: invitation.firstName,
+      expiresInDays: INVITATION_EXPIRY_DAYS,
+    });
+
+    return { token, inviteUrl };
   }
 
   /**
@@ -204,7 +216,16 @@ export class InvitationService {
     await this.invitationRepository.save(invitation);
     this.logger.log(`Invitation ${invitation.id} resent by user ${user.id}`);
 
-    return { invitation, inviteUrl: this.buildInviteUrl(token) };
+    const inviteUrl = this.buildInviteUrl(token);
+    await this.mailService.sendInvitation({
+      to: invitation.email,
+      clubName: invitation.club?.name ?? 'a club',
+      inviteUrl,
+      firstName: invitation.firstName,
+      expiresInDays: INVITATION_EXPIRY_DAYS,
+    });
+
+    return { invitation, inviteUrl };
   }
 
   /**

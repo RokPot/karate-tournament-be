@@ -6,6 +6,7 @@ import { SentryModule } from '@sentry/nestjs/setup';
 import { Auth0Module, Auth0Guard } from '~common/auth';
 import { HttpHealthModule } from '~common/http/health';
 import { LoggerModule } from '~common/logger';
+import { MailModule } from '~common/mail';
 import { SocketIOWebsocketPlugin } from '~common/websocket/providers/socketio/socketio.plugin';
 import { WebsocketModule } from '~common/websocket/websocket.module';
 
@@ -26,6 +27,7 @@ import { UserModule } from '~modules/user/user.module';
     SentryModule.forRoot(),
     HttpHealthModule,
     LoggerModule,
+    MailModule,
     DatabaseModule,
     Auth0Module,
 

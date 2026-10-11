@@ -9,6 +9,7 @@
 ##    AUTH0_CLIENT_SECRET=...
 ##    AUTH0_AUDIENCE=https://api.your-app.com
 ##  Optional: WEB_BASE_URL, API_BASE_URL, RELEASE, WEBSOCKET_SERVER_URL
+##  Mail (Brevo SMTP): BREVO_SMTP_USER, BREVO_SMTP_KEY, BREVO_SMTP_FROM
 ##  PORT is set automatically by Railway.
 
 core:
@@ -57,6 +58,15 @@ database:
 
 invitation:
   frontendBaseUrl: ${env:WEB_BASE_URL}
+
+mail:
+  enabled: true
+  host: smtp-relay.brevo.com
+  port: 587
+  user: ${env:BREVO_SMTP_USER}
+  password: ${env:BREVO_SMTP_KEY}
+  from: ${env:BREVO_SMTP_FROM}
+  tlsInsecure: false
 
 auth0:
   domain: ${env:AUTH0_DOMAIN}

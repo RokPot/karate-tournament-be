@@ -42,6 +42,15 @@ database:
 invitation:
   frontendBaseUrl: 'http://localhost:8000'
 
+mail:
+  enabled: false
+  host: smtp-relay.brevo.com
+  port: 587
+  user: ${env:BREVO_SMTP_USER}
+  password: ${env:BREVO_SMTP_KEY}
+  from: ${env:BREVO_SMTP_FROM}
+  tlsInsecure: false
+
 auth0:
   domain: your-tenant.auth0.com
   clientId: test-client-id

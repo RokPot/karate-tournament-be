@@ -14,6 +14,7 @@ import {
 import { ApiBearerAuth, ApiExtraModels, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { Public } from '~common/auth';
+import { MailService, type RegistrationEmailItem } from '~common/mail';
 
 import { CategoryResponseDto } from '../category/dto/category-response.dto';
 import { UserResponseDto } from '../user/dto/user-response.dto';
@@ -44,6 +45,7 @@ import { TournamentRegistrationCountItemDto } from './dto/tournament-registratio
 import { TournamentRegistrationsQueryDto } from './dto/tournament-registrations-query.dto';
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { UserRegistrationsQueryDto } from './dto/user-registrations-query.dto';
+import { Registration } from './registration.entity';
 import { RegistrationService } from './registration.service';
 
 /**
@@ -64,7 +66,10 @@ import { RegistrationService } from './registration.service';
 @Controller('registrations')
 @ApiBearerAuth('Authorization')
 export class RegistrationController {
-  constructor(private readonly registrationService: RegistrationService) {}
+  constructor(
+    private readonly registrationService: RegistrationService,
+    private readonly mailService: MailService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -92,6 +97,16 @@ export class RegistrationController {
       throw new NotFoundException('Registration not found after creation');
     }
 
+    const email = fullRegistration.user?.email;
+    if (email && isDeliverableEmail(email)) {
+      await this.mailService.sendRegistrationConfirmation({
+        to: email,
+        recipientName: fullRegistration.user?.firstName?.trim() || 'there',
+        tournamentName: fullRegistration.tournament?.name?.trim() || 'Tournament',
+        registrations: [toRegistrationEmailItem(fullRegistration)],
+      });
+    }
+
     return RegistrationResponseDto.fromDomain(fullRegistration);
   }
 
@@ -116,6 +131,16 @@ export class RegistrationController {
       throw new NotFoundException('Registration not found after creation');
     }
 
+    const email = fullRegistration.user?.email;
+    if (email && isDeliverableEmail(email)) {
+      await this.mailService.sendRegistrationConfirmation({
+        to: email,
+        recipientName: fullRegistration.user?.firstName?.trim() || 'there',
+        tournamentName: fullRegistration.tournament?.name?.trim() || 'Tournament',
+        registrations: [toRegistrationEmailItem(fullRegistration)],
+      });
+    }
+
     return RegistrationResponseDto.fromDomain(fullRegistration);
   }
 
@@ -133,9 +158,13 @@ export class RegistrationController {
     const { coach, results } = await this.registrationService.bulkCreateWithCoach(dto);
 
     const mappedResults: BulkRegistrationResultItemDto[] = [];
+    const successfulRegistrations: Registration[] = [];
     for (const item of results) {
       if (item.success && item.registration) {
         const full = await this.registrationService.findById(item.registration.id);
+        if (full) {
+          successfulRegistrations.push(full);
+        }
         mappedResults.push(
           BulkRegistrationResultItemDto.fromData({
             participantIndex: item.participantIndex,
@@ -156,6 +185,15 @@ export class RegistrationController {
           }),
         );
       }
+    }
+
+    if (coach.email && isDeliverableEmail(coach.email) && successfulRegistrations.length > 0) {
+      await this.mailService.sendRegistrationConfirmation({
+        to: coach.email,
+        recipientName: coach.firstName?.trim() || 'there',
+        tournamentName: successfulRegistrations[0]?.tournament?.name?.trim() || 'Tournament',
+        registrations: successfulRegistrations.map(toRegistrationEmailItem),
+      });
     }
 
     return BulkPublicRegistrationResponseDto.fromParts(UserResponseDto.fromDomain(coach), mappedResults);
@@ -423,4 +461,28 @@ export class RegistrationController {
     }
     await this.registrationService.delete(id, currentUser);
   }
+}
+
+const BULK_PARTICIPANT_EMAIL_SUFFIX = '@bulk.participant.local';
+
+function isDeliverableEmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  return normalized.length > 0 && !normalized.endsWith(BULK_PARTICIPANT_EMAIL_SUFFIX);
+}
+
+function participantDisplayName(user: User | null | undefined): string {
+  const parts = [user?.firstName, user?.lastName].filter((part): part is string => Boolean(part?.trim()));
+  if (parts.length > 0) {
+    return parts.join(' ');
+  }
+  return user?.email?.trim() || 'Participant';
+}
+
+function toRegistrationEmailItem(registration: Registration): RegistrationEmailItem {
+  return {
+    participantName: participantDisplayName(registration.user),
+    tournamentName: registration.tournament?.name?.trim() || 'Tournament',
+    categoryName: registration.category?.name?.trim() || 'Category',
+    clubName: registration.club?.name ?? null,
+  };
 }
