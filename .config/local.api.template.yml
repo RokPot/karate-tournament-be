@@ -69,6 +69,7 @@ mail:
   enabled: true
   host: smtp-relay.brevo.com
   port: 587
+  apiKey: ${env:BREVO_API_KEY}
   user: ${env:BREVO_SMTP_USER}
   password: ${env:BREVO_SMTP_KEY}
   from: ${env:BREVO_SMTP_FROM}

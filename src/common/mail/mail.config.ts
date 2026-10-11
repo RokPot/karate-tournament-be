@@ -20,17 +20,31 @@ export class MailConfig {
   @Type(() => Number)
   port: number = 587;
 
+  /**
+   * Brevo SMTP login (used when apiKey is not set).
+   */
   @Expose()
   @IsString()
   @IsOptional()
-  @ValidateIf((o: MailConfig) => o.enabled)
   user?: string;
 
+  /**
+   * Brevo SMTP key (used when apiKey is not set).
+   */
+  @Expose()
+  @IsString()
+  @IsOptional()
+  password?: string;
+
+  /**
+   * Brevo API key (preferred on Railway — HTTPS, avoids SMTP port blocks).
+   * Create under Settings → SMTP & API → API keys (not the SMTP key).
+   */
   @Expose()
   @IsString()
   @IsOptional()
   @ValidateIf((o: MailConfig) => o.enabled)
-  password?: string;
+  apiKey?: string;
 
   @Expose()
   @IsString()
