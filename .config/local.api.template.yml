@@ -66,7 +66,7 @@ invitation:
   frontendBaseUrl: 'http://localhost:3000'
 
 mail:
-  enabled: false
+  enabled: true
   host: smtp-relay.brevo.com
   port: 587
   user: ${env:BREVO_SMTP_USER}
