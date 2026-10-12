@@ -16,6 +16,12 @@ import { formatDateOnlyAsDateTime, parseDateOfBirth } from '~common/utils/date-o
 
 import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
+import {
+  calculateTournamentFees,
+  mapRegistrationToFeeInput,
+  scheduleFromTournament,
+  type TournamentFeeCalculation,
+} from '../tournament/calculate-tournament-fees';
 import { Tournament } from '../tournament/tournament.entity';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
@@ -26,6 +32,7 @@ import { CreateRegistrationWithUserDto } from './dto/create-registration-with-us
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
+import { RegistrationSubmission } from './registration-submission.entity';
 import { Registration } from './registration.entity';
 import { TeamMember } from './team-member.entity';
 import { Team } from './team.entity';
@@ -62,6 +69,7 @@ export interface CreateRegistrationForUserParams {
   finalWeight?: number;
   teamId?: string | null;
   teamRole?: TeamRole | null;
+  submissionId?: string | null;
   unapprovedAs?: 'not_found' | 'bad_request';
 }
 
@@ -169,6 +177,8 @@ export class RegistrationService {
     private readonly teamRepository: Repository<Team>,
     @InjectRepository(TeamMember)
     private readonly teamMemberRepository: Repository<TeamMember>,
+    @InjectRepository(RegistrationSubmission)
+    private readonly submissionRepository: Repository<RegistrationSubmission>,
     private readonly userService: UserService,
   ) {}
 
@@ -318,6 +328,7 @@ export class RegistrationService {
       finalWeight: data.finalWeight ?? null,
       teamId: data.teamId ?? null,
       teamRole: data.teamRole ?? null,
+      submissionId: data.submissionId ?? null,
     });
 
     try {
@@ -353,13 +364,48 @@ export class RegistrationService {
       throw new BadRequestException('Club ID is required for registration');
     }
 
+    const club = await this.clubRepository.findOne({ where: { id: clubId } });
+    const submission = await this.createSubmission({
+      tournamentId: data.tournamentId,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      clubName: club?.name ?? null,
+      clubId,
+      registeredByUserId: user.id,
+    });
+
     return this.createRegistrationForUser(user, {
       tournamentId: data.tournamentId,
       categoryId: data.categoryId,
       clubId,
       finalWeight: data.finalWeight,
+      submissionId: submission.id,
       unapprovedAs: 'not_found',
     });
+  }
+
+  private async createSubmission(params: {
+    tournamentId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    clubName: string | null;
+    clubId: string | null;
+    registeredByUserId: string | null;
+  }): Promise<RegistrationSubmission> {
+    const submission = this.submissionRepository.create({
+      tournamentId: params.tournamentId,
+      email: params.email.trim().toLowerCase(),
+      firstName: params.firstName.trim(),
+      lastName: params.lastName.trim(),
+      clubName: params.clubName?.trim() || null,
+      clubId: params.clubId,
+      registeredByUserId: params.registeredByUserId,
+    });
+    const saved = await this.submissionRepository.save(submission);
+    this.logger.log(`Created registration submission ${saved.id} for tournament ${params.tournamentId}`);
+    return saved;
   }
 
   /**
@@ -402,6 +448,16 @@ export class RegistrationService {
       lastName: data.lastName,
       clubId: resolvedClubId,
       rolesToAdd: [UserRole.CLUB_COACH],
+    });
+
+    const submission = await this.createSubmission({
+      tournamentId: data.tournamentId,
+      email: data.email.trim().toLowerCase(),
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      clubName: data.clubName?.trim() || null,
+      clubId: resolvedClubId,
+      registeredByUserId: coach.id,
     });
 
     const results: BulkRegistrationResultItem[] = [];
@@ -447,6 +503,7 @@ export class RegistrationService {
             categoryId: reg.categoryId,
             clubId: resolvedClubId,
             finalWeight: reg.finalWeight,
+            submissionId: submission.id,
             unapprovedAs: 'not_found',
           });
           results.push({
@@ -468,7 +525,13 @@ export class RegistrationService {
 
     if (data.teams?.length) {
       await this.assertTeamsUniqueAgainstStored(data.tournamentId, data.teams, participantUsers);
-      const teamResults = await this.persistTeams(data.tournamentId, resolvedClubId, data.teams, participantUsers);
+      const teamResults = await this.persistTeams(
+        data.tournamentId,
+        resolvedClubId,
+        data.teams,
+        participantUsers,
+        submission.id,
+      );
       results.push(...teamResults);
     }
 
@@ -594,6 +657,7 @@ export class RegistrationService {
     clubId: string | null,
     teams: BulkTeamDto[],
     participantUsers: Array<User | null>,
+    submissionId?: string | null,
   ): Promise<BulkRegistrationResultItem[]> {
     const results: BulkRegistrationResultItem[] = [];
 
@@ -633,6 +697,7 @@ export class RegistrationService {
             clubId,
             teamId: team.id,
             teamRole: role,
+            submissionId: submissionId ?? null,
             unapprovedAs: 'not_found',
           });
           results.push({
@@ -905,6 +970,50 @@ export class RegistrationService {
       },
       relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Public-form submits for a tournament, each with contact details, grouped participants, and fees.
+   */
+  async findSubmissionsByTournament(
+    tournamentId: string,
+    user: User,
+  ): Promise<Array<{ submission: RegistrationSubmission; fees: TournamentFeeCalculation }>> {
+    const tournament = await this.tournamentRepository.findOne({
+      where: { id: tournamentId },
+    });
+    if (!tournament) {
+      throw new NotFoundException(`Tournament with ID ${tournamentId} not found`);
+    }
+
+    this.assertCanReadTournamentRegistrations(user, tournament);
+
+    const submissions = await this.submissionRepository.find({
+      where: { tournamentId },
+      relations: ['registrations', 'registrations.user', 'registrations.category', 'registrations.teamMembers'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return submissions.map((submission) => ({
+      submission,
+      fees: this.feesForRegistrations(tournament, submission.registrations ?? []),
+    }));
+  }
+
+  feesForRegistrations(
+    tournament: { feeOneCategory: number; feeTwoCategories: number; feeThreeOrMoreCategories: number; feeTeam: number },
+    registrations: Registration[],
+  ): TournamentFeeCalculation {
+    const billed = registrations.filter(
+      (registration) =>
+        registration.status === RegistrationStatus.PENDING || registration.status === RegistrationStatus.APPROVED,
+    );
+    return calculateTournamentFees({
+      fees: scheduleFromTournament(tournament),
+      registrations: billed
+        .filter((registration) => !!registration.category)
+        .map((registration) => mapRegistrationToFeeInput(registration)),
     });
   }
 

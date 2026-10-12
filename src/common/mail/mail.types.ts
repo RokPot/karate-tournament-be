@@ -13,9 +13,28 @@ export interface RegistrationEmailItem {
   clubName?: string | null;
 }
 
+export interface RegistrationEmailFeeParticipant {
+  name: string;
+  categoryCount: number;
+  amount: number;
+}
+
+export interface RegistrationEmailFeeTeam {
+  name: string;
+  amount: number;
+}
+
+export interface RegistrationEmailFees {
+  participants: RegistrationEmailFeeParticipant[];
+  teams: RegistrationEmailFeeTeam[];
+  total: number;
+}
+
 export interface SendRegistrationConfirmationParams {
   to: string;
   recipientName?: string | null;
   tournamentName?: string | null;
+  clubName?: string | null;
   registrations: RegistrationEmailItem[];
+  fees?: RegistrationEmailFees | null;
 }

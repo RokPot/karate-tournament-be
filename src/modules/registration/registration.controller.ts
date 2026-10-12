@@ -14,7 +14,7 @@ import {
 import { ApiBearerAuth, ApiExtraModels, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { Public } from '~common/auth';
-import { MailService, type RegistrationEmailItem } from '~common/mail';
+import { MailService, type RegistrationEmailFees, type RegistrationEmailItem } from '~common/mail';
 
 import { CategoryResponseDto } from '../category/dto/category-response.dto';
 import { UserResponseDto } from '../user/dto/user-response.dto';
@@ -39,6 +39,11 @@ import { PublicParticipantProfileDto } from './dto/public-participant-profile.dt
 import { PublicParticipantSuitableCategoriesItemDto } from './dto/public-participant-suitable-categories-response.dto';
 import { PublicSuitableCategoriesQueryDto } from './dto/public-suitable-categories-query.dto';
 import { RegistrationResponseDto, TeamMembershipDto } from './dto/registration-response.dto';
+import {
+  RegistrationSubmissionDetailsDto,
+  RegistrationSubmissionParticipantDto,
+  RegistrationSubmissionResponseDto,
+} from './dto/registration-submission-response.dto';
 import { SuitableCategoriesQueryDto } from './dto/suitable-categories-query.dto';
 import { TournamentRegistrationCountsQueryDto } from './dto/tournament-registration-counts-query.dto';
 import { TournamentRegistrationCountItemDto } from './dto/tournament-registration-counts-response.dto';
@@ -62,6 +67,9 @@ import { RegistrationService } from './registration.service';
   CategorySuitableParticipantsItemDto,
   SuitableParticipantDto,
   TeamMembershipDto,
+  RegistrationSubmissionDetailsDto,
+  RegistrationSubmissionParticipantDto,
+  RegistrationSubmissionResponseDto,
 )
 @Controller('registrations')
 @ApiBearerAuth('Authorization')
@@ -103,7 +111,9 @@ export class RegistrationController {
         to: email,
         recipientName: fullRegistration.user?.firstName?.trim() || 'there',
         tournamentName: fullRegistration.tournament?.name?.trim() || 'Tournament',
+        clubName: clubNameFromRegistrations([fullRegistration]),
         registrations: [toRegistrationEmailItem(fullRegistration)],
+        fees: this.emailFeesFor([fullRegistration]),
       });
     }
 
@@ -137,7 +147,9 @@ export class RegistrationController {
         to: email,
         recipientName: fullRegistration.user?.firstName?.trim() || 'there',
         tournamentName: fullRegistration.tournament?.name?.trim() || 'Tournament',
+        clubName: clubNameFromRegistrations([fullRegistration]),
         registrations: [toRegistrationEmailItem(fullRegistration)],
+        fees: this.emailFeesFor([fullRegistration]),
       });
     }
 
@@ -192,7 +204,9 @@ export class RegistrationController {
         to: coach.email,
         recipientName: coach.firstName?.trim() || 'there',
         tournamentName: successfulRegistrations[0]?.tournament?.name?.trim() || 'Tournament',
+        clubName: clubNameFromRegistrations(successfulRegistrations, dto.clubName),
         registrations: successfulRegistrations.map(toRegistrationEmailItem),
+        fees: this.emailFeesFor(successfulRegistrations),
       });
     }
 
@@ -315,6 +329,31 @@ export class RegistrationController {
     }
     const counts = await this.registrationService.findCountsByTournament(query.tournamentId, currentUser);
     return counts.map((item) => TournamentRegistrationCountItemDto.fromData(item.categoryId, item.registrationCount));
+  }
+
+  @Get('by-tournament/submissions')
+  @ApiOperation({
+    summary: 'List registration submits for a tournament',
+    description:
+      'Returns each public Club and contact submit with contact details, participants grouped by the categories they were registered into, and fees due for that submit. Legacy registrations without a submit are omitted (use GET /registrations/by-tournament).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Registration submits',
+    type: [RegistrationSubmissionResponseDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
+  @ApiResponse({ status: 404, description: 'Tournament not found' })
+  async findSubmissionsByTournament(
+    @CurrentUserEntity() currentUser: User,
+    @Query() query: TournamentRegistrationCountsQueryDto,
+  ): Promise<RegistrationSubmissionResponseDto[]> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const submissions = await this.registrationService.findSubmissionsByTournament(query.tournamentId, currentUser);
+    return submissions.map(({ submission, fees }) => RegistrationSubmissionResponseDto.fromDomain(submission, fees));
   }
 
   @Get('by-tournament')
@@ -461,6 +500,26 @@ export class RegistrationController {
     }
     await this.registrationService.delete(id, currentUser);
   }
+
+  private emailFeesFor(registrations: Registration[]): RegistrationEmailFees | null {
+    const tournament = registrations[0]?.tournament;
+    if (!tournament) {
+      return null;
+    }
+    const calculation = this.registrationService.feesForRegistrations(tournament, registrations);
+    return {
+      participants: calculation.participants.map((row) => ({
+        name: row.name,
+        categoryCount: row.categoryCount,
+        amount: row.amount,
+      })),
+      teams: calculation.teams.map((row) => ({
+        name: row.categoryName,
+        amount: row.amount,
+      })),
+      total: calculation.total,
+    };
+  }
 }
 
 const BULK_PARTICIPANT_EMAIL_SUFFIX = '@bulk.participant.local';
@@ -485,4 +544,12 @@ function toRegistrationEmailItem(registration: Registration): RegistrationEmailI
     categoryName: registration.category?.name?.trim() || 'Category',
     clubName: registration.club?.name ?? null,
   };
+}
+
+function clubNameFromRegistrations(registrations: Registration[], fallback?: string | null): string | null {
+  const fromFallback = fallback?.trim();
+  if (fromFallback) {
+    return fromFallback;
+  }
+  return registrations.find((registration) => registration.club?.name?.trim())?.club?.name?.trim() ?? null;
 }

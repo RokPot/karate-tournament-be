@@ -11,6 +11,8 @@ import {
 
 import { TournamentStatus } from '~common/enums';
 
+import { numericTransformer } from '~database/transformers/numeric.transformer';
+
 import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { User } from '../user/user.entity';
@@ -67,6 +69,42 @@ export class Tournament {
 
   @Column({ type: 'uuid', nullable: true })
   endedBy!: string | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  feeOneCategory!: number;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  feeTwoCategories!: number;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  feeThreeOrMoreCategories!: number;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: numericTransformer,
+  })
+  feeTeam!: number;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;

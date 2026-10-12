@@ -12,6 +12,7 @@ export * from './public-participant-profile.dto';
 export * from './public-participant-suitable-categories-response.dto';
 export * from './public-suitable-categories-query.dto';
 export * from './registration-response.dto';
+export * from './registration-submission-response.dto';
 export * from './suitable-categories-query.dto';
 export * from './tournament-registration-counts-query.dto';
 export * from './tournament-registration-counts-response.dto';

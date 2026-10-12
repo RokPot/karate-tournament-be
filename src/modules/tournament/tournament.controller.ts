@@ -25,6 +25,8 @@ import { AssignCategoriesDto } from './dto/assign-categories.dto';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { DeclineTournamentDto } from './dto/decline-tournament.dto';
 import { ResubmitTournamentDto } from './dto/resubmit-tournament.dto';
+import { TournamentFeesCalculationDto } from './dto/tournament-fees-calculation.dto';
+import { TournamentFeesQueryDto } from './dto/tournament-fees-query.dto';
 import { TournamentListQueryDto } from './dto/tournament-list-query.dto';
 import { TournamentPublicLiteResponseDto } from './dto/tournament-public-lite-response.dto';
 import { TournamentResponseDto } from './dto/tournament-response.dto';
@@ -127,7 +129,7 @@ export class TournamentController {
   @ApiOperation({
     summary: 'Get tournament (public lite)',
     description:
-      'Returns tournament name, dates, location, status, and full category details. No authentication required. Pending and declined tournaments are not returned.',
+      'Returns tournament name, dates, location, status, fees, and full category details. No authentication required. Pending and declined tournaments are not returned.',
   })
   @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Tournament found', type: TournamentPublicLiteResponseDto })
@@ -244,6 +246,30 @@ export class TournamentController {
     this.assertCanUpdateTournament(caller, existing.clubId);
     const tournament = await this.tournamentService.end(id, caller.id);
     return TournamentResponseDto.fromDomain(tournament);
+  }
+
+  @Get(':id/fees')
+  @ApiOperation({
+    summary: 'Calculate tournament fees',
+    description:
+      'Returns amounts due from current pending and approved registrations. Omit filters for the full bill. Pass userId for one athlete, submissionId for one registration submit, or both.',
+  })
+  @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Calculated fees', type: TournamentFeesCalculationDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
+  @ApiResponse({ status: 404, description: 'Tournament not found' })
+  async calculateFees(
+    @CurrentUserEntity() currentUser: User,
+    @Param('id') id: string,
+    @Query() query: TournamentFeesQueryDto,
+  ): Promise<TournamentFeesCalculationDto> {
+    const caller = this.requireUser(currentUser);
+    const calculation = await this.tournamentService.calculateFees(id, caller, {
+      userId: query.userId,
+      submissionId: query.submissionId,
+    });
+    return TournamentFeesCalculationDto.fromCalculation(calculation);
   }
 
   @Get(':id')

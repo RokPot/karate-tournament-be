@@ -19,6 +19,7 @@ import { Club } from '../club/club.entity';
 import { Tournament } from '../tournament/tournament.entity';
 import { User } from '../user/user.entity';
 
+import { RegistrationSubmission } from './registration-submission.entity';
 import { TeamMember } from './team-member.entity';
 import { Team } from './team.entity';
 
@@ -62,6 +63,9 @@ export class Registration {
   @Column({ type: 'enum', enum: TeamRole, nullable: true })
   teamRole!: TeamRole | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  submissionId!: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
 
@@ -91,4 +95,8 @@ export class Registration {
 
   @OneToMany(() => TeamMember, (member) => member.registration)
   teamMembers!: TeamMember[];
+
+  @ManyToOne(() => RegistrationSubmission, (submission) => submission.registrations, { nullable: true })
+  @JoinColumn({ name: 'submissionId' })
+  submission!: RegistrationSubmission | null;
 }

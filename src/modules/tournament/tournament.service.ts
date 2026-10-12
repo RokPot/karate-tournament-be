@@ -7,8 +7,19 @@ import { TournamentStatus, UserRole } from '~common/enums';
 
 import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
+import { RegistrationSubmission } from '../registration/registration-submission.entity';
+import { Registration } from '../registration/registration.entity';
+import { Team } from '../registration/team.entity';
 import { User } from '../user/user.entity';
 
+import {
+  BILLED_REGISTRATION_STATUSES,
+  calculateTournamentFees,
+  mapRegistrationToFeeInput,
+  scheduleFromTournament,
+  teamIdsForRegistration,
+  type TournamentFeeCalculation,
+} from './calculate-tournament-fees';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentCategory } from './tournament-category.entity';
@@ -41,6 +52,12 @@ export class TournamentService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Club)
     private readonly clubRepository: Repository<Club>,
+    @InjectRepository(Registration)
+    private readonly registrationRepository: Repository<Registration>,
+    @InjectRepository(Team)
+    private readonly teamRepository: Repository<Team>,
+    @InjectRepository(RegistrationSubmission)
+    private readonly submissionRepository: Repository<RegistrationSubmission>,
   ) {}
 
   /**
@@ -73,6 +90,10 @@ export class TournamentService {
       startedBy: null,
       endedAt: null,
       endedBy: null,
+      feeOneCategory: data.fees.oneCategory,
+      feeTwoCategories: data.fees.twoCategories,
+      feeThreeOrMoreCategories: data.fees.threeOrMoreCategories,
+      feeTeam: data.fees.team,
     });
 
     try {
@@ -222,6 +243,21 @@ export class TournamentService {
         }
       }
       tournament.clubId = data.clubId ?? null;
+    }
+
+    if (data.fees) {
+      if (data.fees.oneCategory !== undefined) {
+        tournament.feeOneCategory = data.fees.oneCategory;
+      }
+      if (data.fees.twoCategories !== undefined) {
+        tournament.feeTwoCategories = data.fees.twoCategories;
+      }
+      if (data.fees.threeOrMoreCategories !== undefined) {
+        tournament.feeThreeOrMoreCategories = data.fees.threeOrMoreCategories;
+      }
+      if (data.fees.team !== undefined) {
+        tournament.feeTeam = data.fees.team;
+      }
     }
 
     return this.tournamentRepository.save(tournament);
@@ -384,6 +420,71 @@ export class TournamentService {
     const saved = await this.findByIdOrFail(tournamentId);
     this.logger.log(`Assigned ${uniqueCategoryIds.length} category(ies) to tournament ${tournamentId}`);
     return saved;
+  }
+
+  /**
+   * Calculates current amounts due from pending and approved registrations.
+   */
+  async calculateFees(
+    id: string,
+    caller: User,
+    filters?: { userId?: string; submissionId?: string },
+  ): Promise<TournamentFeeCalculation> {
+    const tournament = await this.findByIdOrFail(id);
+    this.assertCanReadTournamentFees(caller, tournament, filters?.userId);
+
+    if (filters?.submissionId) {
+      const submission = await this.submissionRepository.findOne({
+        where: { id: filters.submissionId, tournamentId: id },
+      });
+      if (!submission) {
+        throw new NotFoundException(`Registration submission ${filters.submissionId} not found for this tournament`);
+      }
+    }
+
+    const registrations = await this.registrationRepository.find({
+      where: {
+        tournamentId: id,
+        status: In([...BILLED_REGISTRATION_STATUSES]),
+        ...(filters?.userId ? { userId: filters.userId } : {}),
+        ...(filters?.submissionId ? { submissionId: filters.submissionId } : {}),
+      },
+      relations: ['user', 'category', 'teamMembers'],
+    });
+
+    const teamIds = [...new Set(registrations.flatMap((registration) => teamIdsForRegistration(registration)))];
+    const teams =
+      teamIds.length === 0
+        ? []
+        : await this.teamRepository.find({
+            where: { id: In(teamIds) },
+            relations: ['category'],
+          });
+
+    return calculateTournamentFees({
+      fees: scheduleFromTournament(tournament),
+      registrations: registrations.map((registration) => mapRegistrationToFeeInput(registration)),
+      teams: teams.map((team) => ({
+        id: team.id,
+        categoryId: team.categoryId,
+        categoryName: team.category?.name ?? '',
+        clubId: team.clubId,
+      })),
+    });
+  }
+
+  private assertCanReadTournamentFees(user: User, tournament: Tournament, userId?: string): void {
+    if (userId && user.id === userId) {
+      return;
+    }
+
+    const canReadFull =
+      isAdmin(user.roles) ||
+      isJudge(user.roles) ||
+      (isClubStaff(user.roles) && !!user.clubId && tournament.clubId === user.clubId);
+    if (!canReadFull) {
+      throw new ForbiddenException('Insufficient permissions to view tournament fees');
+    }
   }
 
   private findMany(where: FindOptionsWhere<Tournament> | FindOptionsWhere<Tournament>[]): Promise<Tournament[]> {

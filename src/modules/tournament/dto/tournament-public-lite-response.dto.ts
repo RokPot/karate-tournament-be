@@ -6,6 +6,8 @@ import { TournamentStatus } from '~common/enums';
 import { CategoryResponseDto } from '../../category/dto/category-response.dto';
 import { Tournament } from '../tournament.entity';
 
+import { TournamentFeeScheduleDto } from './tournament-fee-schedule.dto';
+
 /**
  * Public lite tournament view for registration pages (no auth required).
  */
@@ -78,6 +80,14 @@ export class TournamentPublicLiteResponseDto {
   endedAt!: string | null;
 
   @Expose()
+  @Type(() => TournamentFeeScheduleDto)
+  @ApiProperty({
+    description: 'Registration fee schedule for this tournament',
+    type: TournamentFeeScheduleDto,
+  })
+  fees!: TournamentFeeScheduleDto;
+
+  @Expose()
   @Type(() => CategoryResponseDto)
   @ApiProperty({
     description: 'Categories assigned to this tournament',
@@ -113,6 +123,7 @@ export class TournamentPublicLiteResponseDto {
           : tournament.endedAt
             ? String(tournament.endedAt)
             : null,
+      fees: TournamentFeeScheduleDto.fromTournament(tournament),
       categories: (tournament.categoryAssignments ?? []).map((assignment) =>
         CategoryResponseDto.fromDomain(assignment.category),
       ),

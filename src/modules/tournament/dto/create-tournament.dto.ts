@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
-import { IsString, IsOptional, IsUUID, MaxLength } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsString, IsOptional, IsUUID, MaxLength, ValidateNested } from 'class-validator';
+
+import { TournamentFeeScheduleDto } from './tournament-fee-schedule.dto';
 
 /**
  * Create Tournament DTO
@@ -56,4 +58,13 @@ export class CreateTournamentDto {
   @IsOptional()
   @IsUUID('4')
   clubId?: string;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Registration fee schedule for this tournament',
+    type: TournamentFeeScheduleDto,
+  })
+  @ValidateNested()
+  @Type(() => TournamentFeeScheduleDto)
+  fees!: TournamentFeeScheduleDto;
 }

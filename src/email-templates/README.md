@@ -35,8 +35,10 @@ Unsubscribe / “Odjavi se” stays Brevo-managed — not included in these file
 | --- | --- | --- | --- |
 | `recipientName` | string | recommended | Greeting name |
 | `tournamentName` | string | optional | Shown under success line |
+| `clubName` / `clubLine` | string / HTML | optional | Club from the registration submit |
 | `registrationCount` | number \| string | optional | e.g. `4` → “4 registrations” |
 | `participants` | array | required* | See shape below |
+| `fees` / `feesSection` | object / HTML | optional | Amounts due for this submit |
 | `registrationsHtml` | string (HTML) | fallback | Use instead of `participants` loop if nested `#each` is awkward |
 
 \*Primary path uses `participants`.
@@ -54,6 +56,7 @@ Example payload fragment:
 {
   "recipientName": "Rok",
   "tournamentName": "Zlati Pas Open 2026",
+  "clubName": "Dragon Karate Club",
   "registrationCount": 4,
   "participants": [
     {
@@ -64,7 +67,12 @@ Example payload fragment:
         "YIJU KUMITE - MALČKI B"
       ]
     }
-  ]
+  ],
+  "fees": {
+    "participants": [{ "name": "Rok 1 pot 1", "categoryCount": 3, "amount": 30 }],
+    "teams": [{ "name": "20. Kate Ekipno A", "amount": 30 }],
+    "total": 60
+  }
 }
 ```
 

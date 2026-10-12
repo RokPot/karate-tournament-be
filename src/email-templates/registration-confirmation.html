@@ -19,6 +19,8 @@
       Fallback if nested loops are awkward for BE:
         params.registrationsHtml — pre-rendered athlete blocks (HTML string)
         Place inside the registrations container instead of the #each block.
+        params.clubLine — pre-rendered club name paragraph (HTML string)
+        params.feesSection — pre-rendered fees due block (HTML string)
     -->
   </head>
   <body
@@ -101,7 +103,7 @@
 
                 <p
                   style="
-                    margin: 0 0 24px 0;
+                    margin: 0 0 8px 0;
                     font-size: 14px;
                     line-height: 1.5;
                     font-weight: 400;
@@ -110,6 +112,8 @@
                 >
                   {{ params.tournamentName }}
                 </p>
+
+                {{ params.clubLine }}
 
                 <p
                   style="
@@ -181,6 +185,8 @@
                   </tr>
                 </table>
                 {{/each}}
+
+                {{ params.feesSection }}
 
                 <!-- Footer -->
                 <table

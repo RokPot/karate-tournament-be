@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 import type {
+  RegistrationEmailFees,
   RegistrationEmailItem,
   SendInvitationEmailParams,
   SendRegistrationConfirmationParams,
@@ -137,6 +138,100 @@ function buildParticipantCards(participants: Array<{ name: string; categories: s
     .join('\n');
 }
 
+function formatEuro(amount: number): string {
+  const formatted = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  return `${formatted} €`;
+}
+
+function mutedParagraph(text: string, bottomMargin: string): string {
+  return `
+                <p
+                  style="
+                    margin: 0 0 ${bottomMargin} 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  ${text}
+                </p>`;
+}
+
+function buildClubLine(clubName?: string | null): string {
+  const name = clubName?.trim();
+  if (!name) {
+    return mutedParagraph('&nbsp;', '16px').replace('color: #6b7280;', 'color: #6b7280; font-size: 0; line-height: 0;');
+  }
+  return mutedParagraph(escapeHtml(name), '16px');
+}
+
+function feeRow(label: string, amount: number, emphasize = false): string {
+  return `
+                  <tr>
+                    <td
+                      style="
+                        padding: 6px 0;
+                        font-size: ${emphasize ? '16px' : '14px'};
+                        line-height: 1.4;
+                        font-weight: ${emphasize ? '500' : '400'};
+                        color: #1c1c1e;
+                      "
+                    >
+                      ${escapeHtml(label)}
+                    </td>
+                    <td
+                      align="right"
+                      style="
+                        padding: 6px 0;
+                        font-size: ${emphasize ? '16px' : '14px'};
+                        line-height: 1.4;
+                        font-weight: ${emphasize ? '500' : '400'};
+                        color: #1c1c1e;
+                        white-space: nowrap;
+                      "
+                    >
+                      ${escapeHtml(formatEuro(amount))}
+                    </td>
+                  </tr>`;
+}
+
+function buildFeesSection(fees?: RegistrationEmailFees | null): string {
+  if (!fees) {
+    return '';
+  }
+
+  const participantRows = fees.participants.map((participant) => {
+    const countLabel = participant.categoryCount === 1 ? '1 category' : `${participant.categoryCount} categories`;
+    return feeRow(`${participant.name} (${countLabel})`, participant.amount);
+  });
+  const teamRows = fees.teams.map((team) => feeRow(`${team.name} (team)`, team.amount));
+  const rows = [...participantRows, ...teamRows, feeRow('Total', fees.total, true)].join('');
+
+  return `
+                <p
+                  style="
+                    margin: 24px 0 12px 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    font-weight: 500;
+                    color: #1c1c1e;
+                  "
+                >
+                  Fees due
+                </p>
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="width: 100%; margin: 0 0 8px 0"
+                >
+                  ${rows}
+                </table>`;
+}
+
 function groupParticipants(registrations: RegistrationEmailItem[]): Array<{ name: string; categories: string[] }> {
   const byName = new Map<string, string[]>();
   for (const item of registrations) {
@@ -179,11 +274,15 @@ export function buildInvitationEmail(params: SendInvitationEmailParams): {
 }
 
 export function buildRegistrationConfirmationEmail(
-  params: Pick<SendRegistrationConfirmationParams, 'recipientName' | 'tournamentName' | 'registrations'>,
+  params: Pick<
+    SendRegistrationConfirmationParams,
+    'recipientName' | 'tournamentName' | 'clubName' | 'registrations' | 'fees'
+  >,
 ): { subject: string; html: string; text: string } {
   const recipientName = params.recipientName?.trim() || 'there';
   const tournamentName =
     params.tournamentName?.trim() || params.registrations[0]?.tournamentName?.trim() || 'Tournament';
+  const clubName = params.clubName?.trim() || params.registrations[0]?.clubName?.trim() || '';
   const registrationCount = params.registrations.length;
   const participants = groupParticipants(params.registrations);
   const subject = `Registration confirmed — ${tournamentName}`;
@@ -192,7 +291,9 @@ export function buildRegistrationConfirmationEmail(
   html = replaceParam(html, 'recipientName', escapeHtml(recipientName));
   html = replaceParam(html, 'tournamentName', escapeHtml(tournamentName));
   html = replaceParam(html, 'registrationCount', escapeHtml(String(registrationCount)));
+  html = html.replaceAll('{{ params.clubLine }}', buildClubLine(clubName));
   html = replaceParticipantsEach(html, buildParticipantCards(participants));
+  html = html.replaceAll('{{ params.feesSection }}', buildFeesSection(params.fees));
   html = stripHtmlComments(html);
 
   const textRows = participants
@@ -202,14 +303,29 @@ export function buildRegistrationConfirmationEmail(
     })
     .join('\n');
 
+  const feeTextRows = params.fees
+    ? [
+        '',
+        'Fees due',
+        ...params.fees.participants.map((participant) => {
+          const countLabel = participant.categoryCount === 1 ? '1 category' : `${participant.categoryCount} categories`;
+          return `- ${participant.name} (${countLabel}): ${formatEuro(participant.amount)}`;
+        }),
+        ...params.fees.teams.map((team) => `- ${team.name} (team): ${formatEuro(team.amount)}`),
+        `Total: ${formatEuro(params.fees.total)}`,
+      ]
+    : [];
+
   const text = [
     `Hi ${recipientName},`,
     '',
     'Your registration was successful.',
     tournamentName,
+    ...(clubName ? [clubName] : []),
     '',
     `Registered (${registrationCount} registrations)`,
     textRows,
+    ...feeTextRows,
   ].join('\n');
 
   return { subject, html, text };

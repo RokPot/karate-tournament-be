@@ -7,6 +7,8 @@ import { ClubResponseDto } from '../../club/dto/club-response.dto';
 import { UserResponseDto } from '../../user/dto/user-response.dto';
 import { Tournament } from '../tournament.entity';
 
+import { TournamentFeeScheduleDto } from './tournament-fee-schedule.dto';
+
 /**
  * Tournament Response DTO
  * Data transfer object for tournament responses.
@@ -163,6 +165,14 @@ export class TournamentResponseDto {
   endedBy!: string | null;
 
   @Expose()
+  @Type(() => TournamentFeeScheduleDto)
+  @ApiProperty({
+    description: 'Registration fee schedule for this tournament',
+    type: TournamentFeeScheduleDto,
+  })
+  fees!: TournamentFeeScheduleDto;
+
+  @Expose()
   @ApiProperty({
     description: 'Creation timestamp',
     example: '2024-01-01T00:00:00.000Z',
@@ -226,6 +236,7 @@ export class TournamentResponseDto {
             ? String(tournament.endedAt)
             : null,
       endedBy: tournament.endedBy ?? null,
+      fees: TournamentFeeScheduleDto.fromTournament(tournament),
       createdAt:
         tournament.createdAt instanceof Date ? tournament.createdAt.toISOString() : String(tournament.createdAt || ''),
       updatedAt:

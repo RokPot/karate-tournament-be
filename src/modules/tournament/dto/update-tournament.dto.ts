@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose } from 'class-transformer';
-import { IsString, IsOptional, IsUUID, MaxLength, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsString, IsOptional, IsUUID, MaxLength, ValidateIf, ValidateNested } from 'class-validator';
+
+import { UpdateTournamentFeeScheduleDto } from './tournament-fee-schedule.dto';
 
 /**
  * Update Tournament DTO
@@ -64,4 +66,14 @@ export class UpdateTournamentDto {
   @ValidateIf((_o, v) => v != null && v !== '')
   @IsUUID('4')
   clubId?: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Registration fee schedule. Any field sent replaces that amount.',
+    type: UpdateTournamentFeeScheduleDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateTournamentFeeScheduleDto)
+  fees?: UpdateTournamentFeeScheduleDto;
 }
