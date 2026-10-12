@@ -4,6 +4,7 @@ import { Expose, Type } from 'class-transformer';
 import { TournamentStatus } from '~common/enums';
 
 import { CategoryResponseDto } from '../../category/dto/category-response.dto';
+import { ClubResponseDto } from '../../club/dto/club-response.dto';
 import { Tournament } from '../tournament.entity';
 
 import { TournamentFeeScheduleDto } from './tournament-fee-schedule.dto';
@@ -80,6 +81,23 @@ export class TournamentPublicLiteResponseDto {
   endedAt!: string | null;
 
   @Expose()
+  @ApiPropertyOptional({
+    description: 'Club ID assigned to the tournament',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  clubId!: string | null;
+
+  @Expose()
+  @Type(() => ClubResponseDto)
+  @ApiPropertyOptional({
+    description: 'Club assigned to the tournament, if any',
+    type: ClubResponseDto,
+    nullable: true,
+  })
+  club!: ClubResponseDto | null;
+
+  @Expose()
   @Type(() => TournamentFeeScheduleDto)
   @ApiProperty({
     description: 'Registration fee schedule for this tournament',
@@ -123,6 +141,8 @@ export class TournamentPublicLiteResponseDto {
           : tournament.endedAt
             ? String(tournament.endedAt)
             : null,
+      clubId: tournament.clubId ?? null,
+      club: tournament.club ? ClubResponseDto.fromDomain(tournament.club) : null,
       fees: TournamentFeeScheduleDto.fromTournament(tournament),
       categories: (tournament.categoryAssignments ?? []).map((assignment) =>
         CategoryResponseDto.fromDomain(assignment.category),

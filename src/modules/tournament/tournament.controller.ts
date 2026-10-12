@@ -129,7 +129,7 @@ export class TournamentController {
   @ApiOperation({
     summary: 'Get tournament (public lite)',
     description:
-      'Returns tournament name, dates, location, status, fees, and full category details. No authentication required. Pending and declined tournaments are not returned.',
+      'Returns tournament name, dates, location, status, fees, hosting club when assigned, and full category details. No authentication required. Pending and declined tournaments are not returned.',
   })
   @ApiParam({ name: 'id', description: 'Tournament ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Tournament found', type: TournamentPublicLiteResponseDto })
