@@ -65,6 +65,9 @@ database:
 invitation:
   frontendBaseUrl: 'http://localhost:3000'
 
+maintenance:
+  key: ${env:MAINTENANCE_KEY}
+
 mail:
   enabled: true
   host: smtp-relay.brevo.com

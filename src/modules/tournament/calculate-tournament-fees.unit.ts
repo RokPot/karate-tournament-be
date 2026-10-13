@@ -102,7 +102,7 @@ describe('calculateTournamentFees', () => {
   it('charges the 2-category fee and the 3-or-more fee as a total for that band', () => {
     const two = calculateTournamentFees({
       fees,
-      registrations: [individual('user-1'), individual('user-1', { discipline: Discipline.YAKO_SOKU_KUMITE })],
+      registrations: [individual('user-1'), individual('user-1', { discipline: Discipline.YIJU_KUMITE })],
       teams: [],
     });
     expect(two.participants[0]).toMatchObject({ categoryCount: 2, amount: 20 });
@@ -112,9 +112,9 @@ describe('calculateTournamentFees', () => {
       fees,
       registrations: [
         individual('user-1'),
-        individual('user-1', { discipline: Discipline.YAKO_SOKU_KUMITE }),
-        individual('user-1', { discipline: Discipline.YIJU_KUMITE }),
-        individual('user-1', { discipline: Discipline.KATA }),
+        individual('user-1', { discipline: Discipline.YIJU_KUMITE, categoryId: 'cat-2' }),
+        individual('user-1', { discipline: Discipline.KATA, categoryId: 'cat-3' }),
+        individual('user-1', { discipline: Discipline.YIJU_KUMITE, categoryId: 'cat-4' }),
       ],
       teams: [],
     });
@@ -129,8 +129,12 @@ describe('calculateTournamentFees', () => {
         individual('user-1'),
         teamRegistration('user-1', 'team-1'),
         teamRegistration('user-1', 'team-1', { discipline: Discipline.KUMITE_TEAM }),
+        teamRegistration('user-1', 'team-yako', {
+          discipline: Discipline.YAKO_SOKU_KUMITE,
+          categoryName: 'Yako-Soku Kumite',
+        }),
       ],
-      teams: [team('team-1')],
+      teams: [team('team-1'), team('team-yako', { categoryName: 'Yako-Soku Kumite' })],
     });
 
     expect(result.participants).toEqual([
@@ -144,8 +148,15 @@ describe('calculateTournamentFees', () => {
         clubId: 'club-1',
         amount: 30,
       },
+      {
+        teamId: 'team-yako',
+        categoryId: 'cat-team-yako',
+        categoryName: 'Yako-Soku Kumite',
+        clubId: 'club-1',
+        amount: 30,
+      },
     ]);
-    expect(result.total).toBe(40);
+    expect(result.total).toBe(70);
   });
 
   it('charges each qualifying team once even when several members are billed', () => {

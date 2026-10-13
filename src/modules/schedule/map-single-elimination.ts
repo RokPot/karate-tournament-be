@@ -1,11 +1,5 @@
-import {
-  CompetitorKind,
-  Discipline,
-  GameSlotKind,
-  GameSlotOutcome,
-  GameWinnerSide,
-} from '~common/enums';
 import type { Bracket, BracketMatch, BracketSlot } from '~common/brackets/core';
+import { CompetitorKind, GameSlotKind, GameSlotOutcome, GameWinnerSide, isTeamDiscipline } from '~common/enums';
 
 export type ScheduleParticipant = { id: string };
 
@@ -67,8 +61,7 @@ export const mapGeneratedBracketToGames = (bracket: Bracket<ScheduleParticipant>
   return games;
 };
 
-export const isTeamDiscipline = (discipline: string): boolean =>
-  discipline === Discipline.KATA_TEAM || discipline === Discipline.KUMITE_TEAM;
+export { isTeamDiscipline };
 
 export const competitorKindForDiscipline = (discipline: string): CompetitorKind =>
   isTeamDiscipline(discipline) ? CompetitorKind.TEAM : CompetitorKind.REGISTRATION;

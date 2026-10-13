@@ -49,6 +49,15 @@ export enum Discipline {
   YIJU_KUMITE = 'yiju-kumite',
 }
 
+export const TEAM_DISCIPLINES: readonly Discipline[] = [
+  Discipline.KATA_TEAM,
+  Discipline.KUMITE_TEAM,
+  Discipline.YAKO_SOKU_KUMITE,
+];
+
+export const isTeamDiscipline = (discipline: string): boolean =>
+  (TEAM_DISCIPLINES as readonly string[]).includes(discipline);
+
 export enum SubDiscipline {
   GOHON_IPPON_KUMITE = 'gohon-ippon-kumite',
   SANBON_IPPON_KUMITE = 'sanbon-ippon-kumite',

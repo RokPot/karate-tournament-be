@@ -1,4 +1,4 @@
-import { Discipline, RegistrationStatus } from '~common/enums';
+import { isTeamDiscipline, RegistrationStatus } from '~common/enums';
 
 export const BILLED_REGISTRATION_STATUSES = [RegistrationStatus.PENDING, RegistrationStatus.APPROVED] as const;
 
@@ -63,8 +63,7 @@ export const eurosToCents = (euros: number): number => Math.round(euros * 100);
 
 export const centsToEuros = (cents: number): number => Number((cents / 100).toFixed(2));
 
-export const isTeamDiscipline = (discipline: string): boolean =>
-  discipline === Discipline.KATA_TEAM || discipline === Discipline.KUMITE_TEAM;
+export { isTeamDiscipline };
 
 export const amountForIndividualCategoryCount = (count: number, fees: TournamentFeeSchedule): number => {
   if (count <= 0) {

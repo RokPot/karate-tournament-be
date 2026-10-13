@@ -17,7 +17,7 @@ import { Registration } from './registration.entity';
 import { TeamMember } from './team-member.entity';
 
 /**
- * A team roster in a tournament category (kata-team / kumite-team).
+ * A team roster in a tournament category (kata-team / kumite-team / yako-soku-kumite).
  */
 @Entity('teams')
 export class Team {

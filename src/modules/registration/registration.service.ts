@@ -11,7 +11,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { isAdmin, isClubStaff, isJudge } from '~common/auth';
-import { BeltLevel, Discipline, Gender, RegistrationStatus, TeamRole, TournamentStatus, UserRole } from '~common/enums';
+import {
+  BeltLevel,
+  Gender,
+  isTeamDiscipline,
+  RegistrationStatus,
+  TeamRole,
+  TournamentStatus,
+  UserRole,
+} from '~common/enums';
 import { formatDateOnlyAsDateTime, parseDateOfBirth } from '~common/utils/date-only.utils';
 
 import { Category } from '../category/category.entity';
@@ -550,7 +558,6 @@ export class RegistrationService {
 
     const participantCount = data.participants.length;
     const categoriesById = new Map(tournamentCategories.map((category) => [category.id, category]));
-    const teamDisciplines = new Set<Discipline>([Discipline.KATA_TEAM, Discipline.KUMITE_TEAM]);
     const rostersByCategory = new Map<string, Set<string>>();
 
     teams.forEach((team, teamIndex) => {
@@ -558,7 +565,7 @@ export class RegistrationService {
       if (!category) {
         throw new BadRequestException(`Team ${teamIndex}: category is not part of this tournament`);
       }
-      if (!teamDisciplines.has(category.discipline) || category.teamSize == null) {
+      if (!isTeamDiscipline(category.discipline) || category.teamSize == null) {
         throw new BadRequestException(`Team ${teamIndex}: category is not a team discipline with teamSize set`);
       }
 

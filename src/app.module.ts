@@ -15,6 +15,7 @@ import { DatabaseModule } from '~database';
 import { CategoryModule } from '~modules/category/category.module';
 import { ClubModule } from '~modules/club/club.module';
 import { InvitationModule } from '~modules/invitation/invitation.module';
+import { MaintenanceModule } from '~modules/maintenance/maintenance.module';
 import { RegistrationModule } from '~modules/registration/registration.module';
 import { ScheduleModule } from '~modules/schedule/schedule.module';
 import { TestModule } from '~modules/test/test.module';
@@ -44,6 +45,7 @@ import { UserModule } from '~modules/user/user.module';
     ScheduleModule,
     TournamentModule,
     CategoryModule,
+    MaintenanceModule,
     TestModule,
   ].filter((module) => module !== null),
   providers: [
