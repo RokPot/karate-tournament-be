@@ -3,8 +3,8 @@ import { Expose, Type } from 'class-transformer';
 
 import { RegistrationStatus, TeamRole } from '~common/enums';
 
-import { UserResponseDto } from '../../user/dto/user-response.dto';
 import { ClubResponseDto } from '../../club/dto/club-response.dto';
+import { UserResponseDto } from '../../user/dto/user-response.dto';
 import { Registration } from '../registration.entity';
 
 export class TeamMembershipDto {
@@ -22,6 +22,14 @@ export class TeamMembershipDto {
     example: TeamRole.STARTER,
   })
   teamRole!: TeamRole;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Team display name',
+    example: 'SKIF Ljubljana A',
+    nullable: true,
+  })
+  teamName!: string | null;
 }
 
 /**
@@ -155,9 +163,16 @@ export class RegistrationResponseDto {
         ? registration.teamMembers.map((member) => ({
             teamId: member.teamId,
             teamRole: member.role,
+            teamName: member.team?.name ?? null,
           }))
         : registration.teamId && registration.teamRole
-          ? [{ teamId: registration.teamId, teamRole: registration.teamRole }]
+          ? [
+              {
+                teamId: registration.teamId,
+                teamRole: registration.teamRole,
+                teamName: registration.team?.name ?? null,
+              },
+            ]
           : [];
     const firstMembership = teamMemberships[0];
 
@@ -177,8 +192,14 @@ export class RegistrationResponseDto {
       teamMemberships,
       user: registration.user ? UserResponseDto.fromDomain(registration.user) : null,
       club: registration.club ? ClubResponseDto.fromDomain(registration.club) : null,
-      createdAt: registration.createdAt instanceof Date ? registration.createdAt.toISOString() : String(registration.createdAt || ''),
-      updatedAt: registration.updatedAt instanceof Date ? registration.updatedAt.toISOString() : String(registration.updatedAt || ''),
+      createdAt:
+        registration.createdAt instanceof Date
+          ? registration.createdAt.toISOString()
+          : String(registration.createdAt || ''),
+      updatedAt:
+        registration.updatedAt instanceof Date
+          ? registration.updatedAt.toISOString()
+          : String(registration.updatedAt || ''),
     });
   }
 }

@@ -1,14 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
-import { IsUUID, IsNumber, IsEnum, IsOptional, Min } from 'class-validator';
+import { Expose } from 'class-transformer';
+import { IsUUID, IsNumber, IsEnum, IsOptional, Min, ValidateIf } from 'class-validator';
 
 import { BeltLevel, Gender } from '~common/enums';
 import { ApiDateTimeProperty } from '~common/swagger/api-date.decorators';
-import { IsDateOfBirth } from '~common/validate';
+import { IsDateOfBirth, TransformInputToNumber } from '~common/validate';
 
 /**
  * Query DTO for GET public/suitable-categories.
- * Filters tournament categories by weight, date of birth, belt, and optionally gender without a user account.
+ * Filters tournament categories by date of birth, belt, optionally weight, and optionally gender without a user account.
  */
 export class PublicSuitableCategoriesQueryDto {
   @Expose()
@@ -20,11 +20,17 @@ export class PublicSuitableCategoriesQueryDto {
   tournamentId!: string;
 
   @Expose()
-  @ApiProperty({ description: 'Weight in kg', example: 65, minimum: 0 })
-  @Type(() => Number)
+  @ApiPropertyOptional({
+    description: 'Weight in kg (omit when unknown; skipped for categories with no weight limits)',
+    example: 65,
+    minimum: 0,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @TransformInputToNumber()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  weight!: number;
+  weight?: number;
 
   @Expose()
   @ApiProperty({ description: 'Belt level', enum: BeltLevel, example: BeltLevel.KYU_7 })

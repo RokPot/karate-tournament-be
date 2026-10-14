@@ -31,8 +31,8 @@ export class SuitableParticipantDto {
   lastName!: string;
 
   @Expose()
-  @ApiProperty({ description: 'Weight in kg', example: 50 })
-  weight!: number;
+  @ApiPropertyOptional({ description: 'Weight in kg', example: 50, nullable: true })
+  weight?: number | null;
 
   @Expose()
   @ApiDateTimeProperty({

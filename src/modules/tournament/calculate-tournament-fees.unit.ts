@@ -145,6 +145,7 @@ describe('calculateTournamentFees', () => {
         teamId: 'team-1',
         categoryId: 'cat-team-1',
         categoryName: 'Kata Team',
+        name: 'Kata Team',
         clubId: 'club-1',
         amount: 30,
       },
@@ -152,11 +153,26 @@ describe('calculateTournamentFees', () => {
         teamId: 'team-yako',
         categoryId: 'cat-team-yako',
         categoryName: 'Yako-Soku Kumite',
+        name: 'Yako-Soku Kumite',
         clubId: 'club-1',
         amount: 30,
       },
     ]);
     expect(result.total).toBe(70);
+  });
+
+  it('uses the stored team name on the fee line when provided', () => {
+    const result = calculateTournamentFees({
+      fees,
+      registrations: [teamRegistration('user-1', 'team-1')],
+      teams: [team('team-1', { name: 'SKIF Ljubljana A' })],
+    });
+
+    expect(result.teams[0]).toMatchObject({
+      teamId: 'team-1',
+      name: 'SKIF Ljubljana A',
+      categoryName: 'Kata Team',
+    });
   });
 
   it('charges each qualifying team once even when several members are billed', () => {
@@ -183,6 +199,7 @@ describe('calculateTournamentFees', () => {
         teamId: 'team-1',
         categoryId: 'cat-team-1',
         categoryName: 'Kata Team',
+        name: 'Kata Team',
         clubId: 'club-1',
         amount: 30,
       },

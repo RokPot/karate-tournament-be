@@ -469,6 +469,7 @@ export class TournamentService {
         categoryId: team.categoryId,
         categoryName: team.category?.name ?? '',
         clubId: team.clubId,
+        name: team.name,
       })),
     });
   }

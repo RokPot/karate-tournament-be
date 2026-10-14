@@ -33,6 +33,9 @@ export class Team {
   @Column({ type: 'uuid', nullable: true })
   clubId!: string | null;
 
+  @Column({ type: 'varchar', length: 255 })
+  name!: string;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
 

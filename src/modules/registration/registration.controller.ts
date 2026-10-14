@@ -41,6 +41,7 @@ import { PublicSuitableCategoriesQueryDto } from './dto/public-suitable-categori
 import { RegistrationResponseDto, TeamMembershipDto } from './dto/registration-response.dto';
 import {
   RegistrationSubmissionDetailsDto,
+  RegistrationSubmissionGroupDto,
   RegistrationSubmissionParticipantDto,
   RegistrationSubmissionResponseDto,
 } from './dto/registration-submission-response.dto';
@@ -68,6 +69,7 @@ import { RegistrationService } from './registration.service';
   SuitableParticipantDto,
   TeamMembershipDto,
   RegistrationSubmissionDetailsDto,
+  RegistrationSubmissionGroupDto,
   RegistrationSubmissionParticipantDto,
   RegistrationSubmissionResponseDto,
 )
@@ -218,7 +220,7 @@ export class RegistrationController {
   @ApiOperation({
     summary: 'Get suitable categories by attributes (public)',
     description:
-      'Returns tournament categories matching weight, age, and belt. Optionally pass gender to include gender-restricted categories. No authentication required.',
+      'Returns tournament categories matching age and belt. Weight is optional and skipped for categories with no weight limits. Optionally pass gender to include gender-restricted categories. No authentication required.',
   })
   @ApiResponse({ status: 200, description: 'Suitable categories', type: [CategoryResponseDto] })
   @ApiResponse({ status: 404, description: 'Tournament not found' })
@@ -238,7 +240,7 @@ export class RegistrationController {
   @ApiOperation({
     summary: 'Get suitable categories for multiple participants (public)',
     description:
-      'Returns each participant with tournament categories they are eligible for (weight, age, belt, and gender when provided).',
+      'Returns each participant with tournament categories they are eligible for (age, belt, gender when provided, and weight when provided). Weight is skipped for categories with no weight limits.',
   })
   @ApiResponse({
     status: 200,
@@ -273,7 +275,7 @@ export class RegistrationController {
   @ApiOperation({
     summary: 'Get suitable participants per category (public)',
     description:
-      'Returns each tournament category with participants eligible for it (weight, age, belt, and gender when provided). Participants are matched by request array index via participantIndex.',
+      'Returns each tournament category with participants eligible for it (age, belt, gender when provided, and weight when provided). Weight is skipped for categories with no weight limits. Participants are matched by request array index via participantIndex.',
   })
   @ApiResponse({
     status: 200,
@@ -333,14 +335,14 @@ export class RegistrationController {
 
   @Get('by-tournament/submissions')
   @ApiOperation({
-    summary: 'List registration submits for a tournament',
+    summary: 'List registration submits for a tournament, grouped by coach and club',
     description:
-      'Returns each public Club and contact submit with contact details, participants grouped by the categories they were registered into, and fees due for that submit. Legacy registrations without a submit are omitted (use GET /registrations/by-tournament).',
+      'Returns one group per coach + club. Group fees are the combined bill across that coach’s submits (1/2/3+ discounts apply across sends). Nested submits keep this-submit-only fees. Legacy registrations without a submit are omitted (use GET /registrations/by-tournament).',
   })
   @ApiResponse({
     status: 200,
-    description: 'Registration submits',
-    type: [RegistrationSubmissionResponseDto],
+    description: 'Registration submit groups',
+    type: [RegistrationSubmissionGroupDto],
   })
   @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
   @ApiResponse({ status: 403, description: 'Forbidden - wrong role or another club' })
@@ -348,12 +350,12 @@ export class RegistrationController {
   async findSubmissionsByTournament(
     @CurrentUserEntity() currentUser: User,
     @Query() query: TournamentRegistrationCountsQueryDto,
-  ): Promise<RegistrationSubmissionResponseDto[]> {
+  ): Promise<RegistrationSubmissionGroupDto[]> {
     if (!currentUser) {
       throw new NotFoundException('User not found');
     }
-    const submissions = await this.registrationService.findSubmissionsByTournament(query.tournamentId, currentUser);
-    return submissions.map(({ submission, fees }) => RegistrationSubmissionResponseDto.fromDomain(submission, fees));
+    const groups = await this.registrationService.findSubmissionsByTournament(query.tournamentId, currentUser);
+    return groups.map((group) => RegistrationSubmissionGroupDto.fromDomain(group));
   }
 
   @Get('by-tournament')
@@ -514,7 +516,7 @@ export class RegistrationController {
         amount: row.amount,
       })),
       teams: calculation.teams.map((row) => ({
-        name: row.categoryName,
+        name: `${row.name} (${row.categoryName})`,
         amount: row.amount,
       })),
       total: calculation.total,

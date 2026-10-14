@@ -202,3 +202,93 @@ export class RegistrationSubmissionResponseDto {
     });
   }
 }
+
+/**
+ * Coach + club account of public submits for one tournament.
+ * `fees` is the combined bill; each nested submit keeps this-submit-only fees.
+ */
+export class RegistrationSubmissionGroupDto {
+  @Expose()
+  @ApiProperty({
+    description: 'Stable key for this coach + club in the tournament',
+    example: 'user-id|club:club-id',
+  })
+  groupKey!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Contact email from the latest submit in this group', example: 'coach@club.com' })
+  email!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Contact first name from the latest submit', example: 'Jane' })
+  firstName!: string;
+
+  @Expose()
+  @ApiProperty({ description: 'Contact last name from the latest submit', example: 'Coach' })
+  lastName!: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Club name from the latest submit',
+    example: 'SKIF Ljubljana',
+    nullable: true,
+  })
+  clubName!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Resolved club ID from the latest submit',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  clubId!: string | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Coach / contact user ID from the latest submit',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    nullable: true,
+  })
+  registeredByUserId!: string | null;
+
+  @Expose()
+  @Type(() => TournamentFeesCalculationDto)
+  @ApiProperty({
+    description: 'Fees due for pending and approved registrations across all submits in this group',
+    type: TournamentFeesCalculationDto,
+  })
+  fees!: TournamentFeesCalculationDto;
+
+  @Expose()
+  @Type(() => RegistrationSubmissionResponseDto)
+  @ApiProperty({
+    description: 'Individual form sends in this group, oldest first, each with this-submit fees',
+    type: [RegistrationSubmissionResponseDto],
+  })
+  submissions!: RegistrationSubmissionResponseDto[];
+
+  constructor(data: RegistrationSubmissionGroupDto) {
+    Object.assign(this, data);
+  }
+
+  static fromDomain(group: {
+    groupKey: string;
+    latest: RegistrationSubmission;
+    submissions: Array<{ submission: RegistrationSubmission; fees: TournamentFeeCalculation }>;
+    fees: TournamentFeeCalculation;
+  }): RegistrationSubmissionGroupDto {
+    return new RegistrationSubmissionGroupDto({
+      groupKey: group.groupKey,
+      email: group.latest.email,
+      firstName: group.latest.firstName,
+      lastName: group.latest.lastName,
+      clubName: group.latest.clubName,
+      clubId: group.latest.clubId,
+      registeredByUserId: group.latest.registeredByUserId,
+      fees: TournamentFeesCalculationDto.fromCalculation(group.fees),
+      submissions: group.submissions.map((item) =>
+        RegistrationSubmissionResponseDto.fromDomain(item.submission, item.fees),
+      ),
+    });
+  }
+}

@@ -26,6 +26,7 @@ export type FeeCalculationTeam = {
   categoryId: string;
   categoryName: string;
   clubId: string | null;
+  name?: string | null;
 };
 
 export type TournamentFeeParticipant = {
@@ -40,6 +41,7 @@ export type TournamentFeeTeamLine = {
   teamId: string;
   categoryId: string;
   categoryName: string;
+  name: string;
   clubId: string | null;
   amount: number;
 };
@@ -156,6 +158,7 @@ export const calculateTournamentFees = (input: CalculateTournamentFeesInput): To
             categoryId: registration.categoryId,
             categoryName: registration.categoryName,
             clubId: registration.clubId,
+            name: registration.categoryName,
           });
         }
       }
@@ -190,6 +193,7 @@ export const calculateTournamentFees = (input: CalculateTournamentFeesInput): To
       teamId: team.id,
       categoryId: team.categoryId,
       categoryName: team.categoryName,
+      name: team.name?.trim() || team.categoryName,
       clubId: team.clubId,
       amount: input.fees.team,
     }))

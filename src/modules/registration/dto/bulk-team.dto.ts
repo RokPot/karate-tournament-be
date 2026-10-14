@@ -1,6 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 import { TransformObjectToArray } from './transformers/object-to-array.transform';
 
@@ -15,6 +25,18 @@ export class BulkTeamDto {
   })
   @IsUUID('4')
   categoryId!: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Team display name. Omit to generate from club name or starter last names.',
+    example: 'SKIF Ljubljana A',
+    maxLength: 255,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null && String(v).trim() !== '')
+  @IsString()
+  @MaxLength(255)
+  name?: string;
 
   @Expose()
   @ApiProperty({

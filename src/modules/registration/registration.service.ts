@@ -28,6 +28,7 @@ import {
   calculateTournamentFees,
   mapRegistrationToFeeInput,
   scheduleFromTournament,
+  type FeeCalculationTeam,
   type TournamentFeeCalculation,
 } from '../tournament/calculate-tournament-fees';
 import { Tournament } from '../tournament/tournament.entity';
@@ -42,15 +43,27 @@ import { PublicParticipantProfileDto } from './dto/public-participant-profile.dt
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { RegistrationSubmission } from './registration-submission.entity';
 import { Registration } from './registration.entity';
+import { groupBySubmissionAccount } from './submission-account-key';
 import { TeamMember } from './team-member.entity';
+import { resolveTeamName, teamNameScopeKey } from './team-name';
 import { Team } from './team.entity';
 import { userFitsCategory, validateUserFitsCategory } from './validators/category-eligibility.validator';
+
+const REGISTRATION_DETAIL_RELATIONS = [
+  'user',
+  'tournament',
+  'category',
+  'club',
+  'team',
+  'teamMembers',
+  'teamMembers.team',
+] as const;
 
 export interface FindOrCreateTempUserParams {
   email: string;
   firstName: string;
   lastName: string;
-  weight?: number;
+  weight?: number | null;
   dateOfBirth?: string;
   gender?: Gender;
   beltLevel?: BeltLevel;
@@ -63,7 +76,7 @@ export interface FindOrCreateBulkParticipantParams {
   lastName: string;
   clubName?: string;
   clubId: string | null;
-  weight: number;
+  weight?: number | null;
   dateOfBirth: string;
   gender?: Gender;
   beltLevel?: BeltLevel;
@@ -98,7 +111,7 @@ export interface BulkCreateWithCoachResult {
 export interface PublicParticipantSuitableCategoriesItem {
   firstName: string;
   lastName: string;
-  weight: number;
+  weight?: number | null;
   dateOfBirth: string;
   gender?: Gender | null;
   beltLevel?: BeltLevel | null;
@@ -109,7 +122,7 @@ export interface SuitableParticipantItem {
   participantIndex: number;
   firstName: string;
   lastName: string;
-  weight: number;
+  weight?: number | null;
   dateOfBirth: string;
   gender?: Gender | null;
   beltLevel?: BeltLevel | null;
@@ -118,6 +131,18 @@ export interface SuitableParticipantItem {
 export interface CategorySuitableParticipantsItem {
   category: Category;
   participants: SuitableParticipantItem[];
+}
+
+export interface RegistrationSubmissionWithFees {
+  submission: RegistrationSubmission;
+  fees: TournamentFeeCalculation;
+}
+
+export interface RegistrationSubmissionAccountGroup {
+  groupKey: string;
+  latest: RegistrationSubmission;
+  submissions: RegistrationSubmissionWithFees[];
+  fees: TournamentFeeCalculation;
 }
 
 /** Normalizes a string for use in synthetic participant placeholder emails. */
@@ -536,6 +561,7 @@ export class RegistrationService {
       const teamResults = await this.persistTeams(
         data.tournamentId,
         resolvedClubId,
+        club?.name ?? data.clubName?.trim() ?? null,
         data.teams,
         participantUsers,
         submission.id,
@@ -662,19 +688,43 @@ export class RegistrationService {
   private async persistTeams(
     tournamentId: string,
     clubId: string | null,
+    clubName: string | null,
     teams: BulkTeamDto[],
     participantUsers: Array<User | null>,
     submissionId?: string | null,
   ): Promise<BulkRegistrationResultItem[]> {
     const results: BulkRegistrationResultItem[] = [];
+    const existingTeams = await this.teamRepository.find({
+      where: { tournamentId },
+      select: ['id', 'categoryId', 'clubId', 'name'],
+    });
+    const takenByScope = new Map<string, string[]>();
+    for (const existing of existingTeams) {
+      const scopeKey = teamNameScopeKey(existing.categoryId, existing.clubId);
+      const names = takenByScope.get(scopeKey) ?? [];
+      names.push(existing.name);
+      takenByScope.set(scopeKey, names);
+    }
 
     for (let teamIndex = 0; teamIndex < teams.length; teamIndex++) {
       const teamDto = teams[teamIndex];
+      const scopeKey = teamNameScopeKey(teamDto.categoryId, clubId);
+      const taken = takenByScope.get(scopeKey) ?? [];
+      const name = resolveTeamName({
+        provided: teamDto.name,
+        clubName,
+        starterLastNames: teamDto.starters.map((participantIndex) => participantUsers[participantIndex]?.lastName),
+        taken,
+      });
+      taken.push(name);
+      takenByScope.set(scopeKey, taken);
+
       const team = await this.teamRepository.save(
         this.teamRepository.create({
           tournamentId,
           categoryId: teamDto.categoryId,
           clubId,
+          name,
         }),
       );
 
@@ -802,7 +852,7 @@ export class RegistrationService {
   ): User {
     return {
       dateOfBirth: parseDateOfBirth(profile.dateOfBirth),
-      weight: profile.weight,
+      weight: profile.weight ?? null,
       beltLevel: profile.beltLevel ?? null,
       gender: profile.gender ?? null,
     } as User;
@@ -822,7 +872,7 @@ export class RegistrationService {
    */
   async getSuitableCategoriesForAttributes(
     tournamentId: string,
-    weight: number,
+    weight: number | null | undefined,
     beltLevel: BeltLevel,
     dateOfBirth: string,
     gender?: Gender,
@@ -931,7 +981,7 @@ export class RegistrationService {
   async findById(id: string): Promise<Registration | null> {
     return this.registrationRepository.findOne({
       where: { id },
-      relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
+      relations: [...REGISTRATION_DETAIL_RELATIONS],
     });
   }
 
@@ -975,18 +1025,15 @@ export class RegistrationService {
         tournamentId,
         ...(categoryId ? { categoryId } : {}),
       },
-      relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
+      relations: [...REGISTRATION_DETAIL_RELATIONS],
       order: { createdAt: 'DESC' },
     });
   }
 
   /**
-   * Public-form submits for a tournament, each with contact details, grouped participants, and fees.
+   * Public-form submits for a tournament, grouped by coach + club, with combined and per-submit fees.
    */
-  async findSubmissionsByTournament(
-    tournamentId: string,
-    user: User,
-  ): Promise<Array<{ submission: RegistrationSubmission; fees: TournamentFeeCalculation }>> {
+  async findSubmissionsByTournament(tournamentId: string, user: User): Promise<RegistrationSubmissionAccountGroup[]> {
     const tournament = await this.tournamentRepository.findOne({
       where: { id: tournamentId },
     });
@@ -998,14 +1045,30 @@ export class RegistrationService {
 
     const submissions = await this.submissionRepository.find({
       where: { tournamentId },
-      relations: ['registrations', 'registrations.user', 'registrations.category', 'registrations.teamMembers'],
-      order: { createdAt: 'DESC' },
+      relations: [
+        'registrations',
+        'registrations.user',
+        'registrations.category',
+        'registrations.teamMembers',
+        'registrations.teamMembers.team',
+      ],
     });
 
-    return submissions.map((submission) => ({
-      submission,
-      fees: this.feesForRegistrations(tournament, submission.registrations ?? []),
-    }));
+    return groupBySubmissionAccount(submissions).map((group) => {
+      const latest = group.submissions[group.submissions.length - 1];
+      const submissionsWithFees = group.submissions.map((submission) => ({
+        submission,
+        fees: this.feesForRegistrations(tournament, submission.registrations ?? []),
+      }));
+      const combinedRegistrations = group.submissions.flatMap((submission) => submission.registrations ?? []);
+
+      return {
+        groupKey: group.groupKey,
+        latest,
+        submissions: submissionsWithFees,
+        fees: this.feesForRegistrations(tournament, combinedRegistrations),
+      };
+    });
   }
 
   feesForRegistrations(
@@ -1016,11 +1079,28 @@ export class RegistrationService {
       (registration) =>
         registration.status === RegistrationStatus.PENDING || registration.status === RegistrationStatus.APPROVED,
     );
+    const withCategory = billed.filter((registration) => !!registration.category);
+    const teamsById = new Map<string, FeeCalculationTeam>();
+    for (const registration of withCategory) {
+      for (const member of registration.teamMembers ?? []) {
+        const team = member.team;
+        if (!team || teamsById.has(team.id)) {
+          continue;
+        }
+        teamsById.set(team.id, {
+          id: team.id,
+          categoryId: team.categoryId,
+          categoryName: team.category?.name ?? registration.category.name,
+          clubId: team.clubId,
+          name: team.name,
+        });
+      }
+    }
+
     return calculateTournamentFees({
       fees: scheduleFromTournament(tournament),
-      registrations: billed
-        .filter((registration) => !!registration.category)
-        .map((registration) => mapRegistrationToFeeInput(registration)),
+      registrations: withCategory.map((registration) => mapRegistrationToFeeInput(registration)),
+      teams: [...teamsById.values()],
     });
   }
 
@@ -1037,7 +1117,7 @@ export class RegistrationService {
         ...(filters?.tournamentId ? { tournamentId: filters.tournamentId } : {}),
         ...(filters?.status ? { status: filters.status } : {}),
       },
-      relations: ['user', 'tournament', 'category', 'club', 'teamMembers'],
+      relations: [...REGISTRATION_DETAIL_RELATIONS],
       order: { createdAt: 'DESC' },
     });
   }

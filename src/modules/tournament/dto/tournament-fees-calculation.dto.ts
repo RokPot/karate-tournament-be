@@ -70,6 +70,13 @@ export class TournamentFeeTeamLineDto {
   categoryName!: string;
 
   @Expose()
+  @ApiProperty({
+    description: 'Team display name',
+    example: 'SKIF Ljubljana A',
+  })
+  name!: string;
+
+  @Expose()
   @ApiPropertyOptional({
     description: 'Club ID on the team',
     example: '123e4567-e89b-12d3-a456-426614174000',

@@ -1,10 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
-import { IsString, IsNumber, IsEnum, IsOptional, Min, MaxLength } from 'class-validator';
+import { Expose } from 'class-transformer';
+import { IsString, IsNumber, IsEnum, IsOptional, Min, MaxLength, ValidateIf } from 'class-validator';
 
 import { Gender, BeltLevel } from '~common/enums';
 import { ApiDateTimeProperty } from '~common/swagger/api-date.decorators';
-import { IsDateOfBirth } from '~common/validate';
+import { IsDateOfBirth, TransformInputToNumber } from '~common/validate';
 
 /**
  * Public bulk participant profile (no email).
@@ -24,11 +24,18 @@ export class PublicParticipantProfileDto {
   lastName!: string;
 
   @Expose()
-  @ApiProperty({ description: 'Weight in kg', example: 65, minimum: 0 })
-  @Type(() => Number)
+  @ApiPropertyOptional({
+    description: 'Weight in kg (omit/null when unknown; skipped for categories with no weight limits)',
+    example: 65,
+    minimum: 0,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @TransformInputToNumber()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  weight!: number;
+  weight?: number | null;
 
   @Expose()
   @ApiDateTimeProperty({

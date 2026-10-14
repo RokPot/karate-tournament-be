@@ -259,7 +259,6 @@ export class ScheduleService {
     if (kind === CompetitorKind.TEAM) {
       const teams = await this.teamRepository.find({
         where: { id: In(ids) },
-        relations: ['club'],
       });
       for (const team of teams) {
         map.set(
@@ -267,7 +266,7 @@ export class ScheduleService {
           new CompetitorRefDto({
             id: team.id,
             kind: CompetitorKind.TEAM,
-            displayName: team.club?.name ?? 'Team',
+            displayName: team.name,
           }),
         );
       }

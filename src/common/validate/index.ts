@@ -1,5 +1,6 @@
 export { TransformInputToArray } from './transformers/input-to-array.transformer';
 export { TransformInputToBoolean } from './transformers/input-to-boolean.transformer';
+export { TransformInputToNumber } from './transformers/input-to-number.transformer';
 export { TransformJsonToObject } from './transformers/json-to-object.transformer';
 export { ParseEmailPipe } from './pipes/parse-email.pipe';
 export { ValidateInline } from './validators/validate-inline.validator';
