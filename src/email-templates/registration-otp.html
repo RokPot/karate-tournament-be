@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Registration code</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <!--
+      Brevo transactional params:
+        params.code               string           6 digits
+        params.tournamentName     string
+        params.expiresInMinutes   number | string  currently 10
+        params.firstName          string           optional greeting
+        params.clubName           string           optional; which roster this code unlocks
+
+      No link or button. The coach already has the registration form open
+      and types the code there.
+    -->
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f8f7f4;
+      font-family: Roboto, Arial, Helvetica, sans-serif;
+      color: #1c1c1e;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    "
+  >
+    <!-- Preheader: inbox preview. Code stays out of the subject and lock screen. -->
+    <div
+      style="
+        display: none;
+        max-height: 0;
+        overflow: hidden;
+        mso-hide: all;
+        font-size: 1px;
+        line-height: 1px;
+        color: #f8f7f4;
+      "
+    >
+      Enter this code to continue your registration for {{ params.tournamentName }}.
+      It expires in {{ params.expiresInMinutes }} minutes.
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="background-color: #f8f7f4; margin: 0; padding: 0"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="560"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+              width: 100%;
+              max-width: 560px;
+              background-color: #ffffff;
+              border: 1px solid #ebeae6;
+              border-collapse: separate;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <!-- Brand strip -->
+            <tr>
+              <td
+                bgcolor="#5C481C"
+                style="
+                  height: 4px;
+                  line-height: 4px;
+                  font-size: 0;
+                  background-color: #5c481c;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+
+            <!-- Body -->
+            <tr>
+              <td style="padding: 32px 28px 28px 28px">
+                {{#if params.firstName}}
+                <p
+                  style="
+                    margin: 0 0 16px 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #1c1c1e;
+                  "
+                >
+                  Hi {{ params.firstName }},
+                </p>
+                {{/if}}
+
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #1c1c1e;
+                  "
+                >
+                  Use this code to continue your registration for
+                  <strong style="font-weight: 500">{{ params.tournamentName }}</strong>.
+                </p>
+
+                {{#if params.clubName}}
+                <p
+                  style="
+                    margin: 8px 0 0 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  Club: {{ params.clubName }}
+                </p>
+                {{/if}}
+
+                <!-- Code. One text node so the coach can copy all 6 digits. -->
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="width: 100%; margin: 24px 0 20px 0"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      bgcolor="#FBF6EB"
+                      style="
+                        background-color: #fbf6eb;
+                        border: 1px solid #f3e6c8;
+                        border-radius: 8px;
+                        padding: 22px 16px;
+                      "
+                    >
+                      <p
+                        style="
+                          margin: 0 0 6px 0;
+                          font-size: 13px;
+                          line-height: 1.4;
+                          font-weight: 500;
+                          color: #9a7b32;
+                        "
+                      >
+                        Registration code
+                      </p>
+                      <p
+                        style="
+                          margin: 0;
+                          padding-left: 8px;
+                          font-size: 36px;
+                          line-height: 1.2;
+                          font-weight: 500;
+                          letter-spacing: 8px;
+                          color: #5c481c;
+                          font-family: Roboto, Arial, Helvetica, sans-serif;
+                        "
+                      >
+                        {{ params.code }}
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
+                <p
+                  style="
+                    margin: 0 0 8px 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  This code expires in {{ params.expiresInMinutes }} minutes.
+                </p>
+
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  If you didn't ask to continue this registration, you can ignore this email.
+                </p>
+
+                <!-- Footer -->
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="width: 100%; margin-top: 28px"
+                >
+                  <tr>
+                    <td
+                      style="
+                        border-top: 1px solid #ebeae6;
+                        padding-top: 16px;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        color: #6b7280;
+                      "
+                    >
+                      Karate App
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

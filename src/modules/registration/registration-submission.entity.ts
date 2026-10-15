@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
   OneToMany,
   JoinColumn,
@@ -47,6 +48,9 @@ export class RegistrationSubmission {
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;
+
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt!: Date;
 
   @ManyToOne(() => Tournament, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tournamentId' })

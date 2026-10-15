@@ -80,7 +80,23 @@ Athletes are **grouped** with categories listed under each name (no separate tou
 
 ---
 
-## 2. Club invitation
+## 2. Registration updated (continue PUT)
+
+| | |
+| --- | --- |
+| **File** | [`registration-updated.html`](./registration-updated.html) |
+| **Suggested Brevo name** | `registration-updated` |
+| **Suggested subject (EN)** | `Registration updated — {{ params.tournamentName }}` |
+
+Sent after a public roster **PUT** (continue/edit). Same athlete grouping and fees as confirmation, but the body is the **full current roster** after edits, not only the last form send.
+
+### Params
+
+Same as [registration confirmation](#1-registration-confirmation). Copy differs: intro is “updated” / “current total”; list heading is “Current registrations”.
+
+---
+
+## 3. Club invitation
 
 | | |
 | --- | --- |
@@ -105,6 +121,38 @@ Example payload fragment:
   "clubName": "Club 1 test",
   "expiresInDays": 7,
   "acceptUrl": "https://app.example.com/invite/d4e5fc5a-ae8a-4bea-bf01-bfa77ffb5aab"
+}
+```
+
+---
+
+## 4. Registration continue OTP
+
+| | |
+| --- | --- |
+| **File** | [`registration-otp.html`](./registration-otp.html) |
+| **Suggested Brevo name** | `registration-otp` |
+| **Suggested subject (EN)** | `Your registration code for {{ params.tournamentName }}` |
+
+No link or button. The coach already has the public form open and types the code there. Do **not** put the 6-digit code in the subject.
+
+### Params
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `code` | string | yes | 6 digits |
+| `tournamentName` | string | yes | Tournament display name |
+| `expiresInMinutes` | number \| string | yes | Currently `10` |
+| `firstName` | string | optional | Greeting; omit the `{{#if}}` block if empty |
+| `clubName` | string | optional | Which roster this code unlocks |
+
+```json
+{
+  "code": "123456",
+  "tournamentName": "Zlati Pas Open 2026",
+  "expiresInMinutes": 10,
+  "firstName": "Rok",
+  "clubName": "SKIF Ljubljana"
 }
 ```
 

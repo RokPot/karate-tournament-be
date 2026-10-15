@@ -30,6 +30,15 @@ export interface RegistrationEmailFees {
   total: number;
 }
 
+export interface SendRosterOtpParams {
+  to: string;
+  tournamentName: string;
+  code: string;
+  firstName?: string | null;
+  clubName?: string | null;
+  expiresInMinutes?: number;
+}
+
 export interface SendRegistrationConfirmationParams {
   to: string;
   recipientName?: string | null;
@@ -38,3 +47,5 @@ export interface SendRegistrationConfirmationParams {
   registrations: RegistrationEmailItem[];
   fees?: RegistrationEmailFees | null;
 }
+
+export type SendRegistrationUpdatedParams = SendRegistrationConfirmationParams;

@@ -45,12 +45,24 @@ import {
   RegistrationSubmissionParticipantDto,
   RegistrationSubmissionResponseDto,
 } from './dto/registration-submission-response.dto';
+import { RosterGetQueryDto } from './dto/roster-get-query.dto';
+import { RosterIdentityDto } from './dto/roster-identity.dto';
+import { RosterLookupResponseDto } from './dto/roster-lookup-response.dto';
+import {
+  RosterOtpRequestDto,
+  RosterOtpResponseDto,
+  RosterOtpVerifyDto,
+  RosterOtpVerifyResponseDto,
+} from './dto/roster-otp.dto';
+import { RosterPutDto } from './dto/roster-put.dto';
+import { RosterResponseDto } from './dto/roster-response.dto';
 import { SuitableCategoriesQueryDto } from './dto/suitable-categories-query.dto';
 import { TournamentRegistrationCountsQueryDto } from './dto/tournament-registration-counts-query.dto';
 import { TournamentRegistrationCountItemDto } from './dto/tournament-registration-counts-response.dto';
 import { TournamentRegistrationsQueryDto } from './dto/tournament-registrations-query.dto';
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { UserRegistrationsQueryDto } from './dto/user-registrations-query.dto';
+import { RegistrationRosterService } from './registration-roster.service';
 import { Registration } from './registration.entity';
 import { RegistrationService } from './registration.service';
 
@@ -72,12 +84,17 @@ import { RegistrationService } from './registration.service';
   RegistrationSubmissionGroupDto,
   RegistrationSubmissionParticipantDto,
   RegistrationSubmissionResponseDto,
+  RosterLookupResponseDto,
+  RosterOtpResponseDto,
+  RosterOtpVerifyResponseDto,
+  RosterResponseDto,
 )
 @Controller('registrations')
 @ApiBearerAuth('Authorization')
 export class RegistrationController {
   constructor(
     private readonly registrationService: RegistrationService,
+    private readonly registrationRosterService: RegistrationRosterService,
     private readonly mailService: MailService,
   ) {}
 
@@ -213,6 +230,83 @@ export class RegistrationController {
     }
 
     return BulkPublicRegistrationResponseDto.fromParts(UserResponseDto.fromDomain(coach), mappedResults);
+  }
+
+  @Public()
+  @Post('public/rosters/lookup')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Check whether a public registration roster exists',
+    description:
+      'Looks up a coach + club roster for a tournament. Returns found + updatedAt only — never participant data.',
+  })
+  @ApiResponse({ status: 200, description: 'Lookup result', type: RosterLookupResponseDto })
+  @ApiResponse({ status: 404, description: 'Tournament not found' })
+  async lookupRoster(@Body() dto: RosterIdentityDto): Promise<RosterLookupResponseDto> {
+    const result = await this.registrationRosterService.lookup(dto);
+    return new RosterLookupResponseDto(result);
+  }
+
+  @Public()
+  @Post('public/rosters/otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Email a one-time code to continue a registration roster',
+    description: 'Sends a 6-digit code to the coach email when a roster exists for this tournament and club.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Code sent (debugCode only when mail is disabled outside production)',
+    type: RosterOtpResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Roster or tournament not found' })
+  @ApiResponse({ status: 429, description: 'Wait before requesting another code' })
+  async requestRosterOtp(@Body() dto: RosterOtpRequestDto): Promise<RosterOtpResponseDto> {
+    const result = await this.registrationRosterService.requestOtp(dto);
+    return new RosterOtpResponseDto(result);
+  }
+
+  @Public()
+  @Post('public/rosters/otp/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify roster OTP',
+    description: 'Exchanges a valid email code for a short-lived accessToken used on GET/PUT current roster.',
+  })
+  @ApiResponse({ status: 200, description: 'Access token', type: RosterOtpVerifyResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid or expired code' })
+  @ApiResponse({ status: 404, description: 'Roster or tournament not found' })
+  async verifyRosterOtp(@Body() dto: RosterOtpVerifyDto): Promise<RosterOtpVerifyResponseDto> {
+    const result = await this.registrationRosterService.verifyOtp(dto);
+    return new RosterOtpVerifyResponseDto(result);
+  }
+
+  @Public()
+  @Get('public/rosters/current')
+  @ApiOperation({
+    summary: 'Get the current public registration roster',
+    description:
+      'Merged latest athletes and teams for the coach + club. Pass accessToken from OTP verify as a query param.',
+  })
+  @ApiResponse({ status: 200, description: 'Current roster', type: RosterResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid or expired access token' })
+  @ApiResponse({ status: 404, description: 'Roster not found' })
+  async getCurrentRoster(@Query() query: RosterGetQueryDto): Promise<RosterResponseDto> {
+    return this.registrationRosterService.getCurrent(query.accessToken);
+  }
+
+  @Public()
+  @Put('public/rosters/current')
+  @ApiOperation({
+    summary: 'Replace the current public registration roster',
+    description:
+      'Updates athletes and teams in place (no new submission). accessToken and updatedAt are required in the body.',
+  })
+  @ApiResponse({ status: 200, description: 'Updated roster', type: RosterResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid or expired access token' })
+  @ApiResponse({ status: 409, description: 'Roster was updated since load' })
+  async putCurrentRoster(@Body() dto: RosterPutDto): Promise<RosterResponseDto> {
+    return this.registrationRosterService.putCurrent(dto);
   }
 
   @Public()

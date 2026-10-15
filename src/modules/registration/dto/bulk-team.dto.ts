@@ -28,6 +28,15 @@ export class BulkTeamDto {
 
   @Expose()
   @ApiPropertyOptional({
+    description: 'Existing team ID (continue-roster PUT). Omit to create a new team.',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  id?: string;
+
+  @Expose()
+  @ApiPropertyOptional({
     description: 'Team display name. Omit to generate from club name or starter last names.',
     example: 'SKIF Ljubljana A',
     maxLength: 255,

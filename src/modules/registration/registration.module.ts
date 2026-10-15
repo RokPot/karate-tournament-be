@@ -9,6 +9,9 @@ import { Tournament } from '../tournament/tournament.entity';
 import { User } from '../user/user.entity';
 import { UserModule } from '../user/user.module';
 
+import { RegistrationRosterOtp } from './registration-roster-otp.entity';
+import { RegistrationRosterSession } from './registration-roster-session.entity';
+import { RegistrationRosterService } from './registration-roster.service';
 import { RegistrationSubmission } from './registration-submission.entity';
 import { RegistrationController } from './registration.controller';
 import { Registration } from './registration.entity';
@@ -25,6 +28,8 @@ import { Team } from './team.entity';
     TypeOrmModule.forFeature([
       Registration,
       RegistrationSubmission,
+      RegistrationRosterOtp,
+      RegistrationRosterSession,
       Team,
       TeamMember,
       Tournament,
@@ -36,7 +41,7 @@ import { Team } from './team.entity';
     MailModule,
   ],
   controllers: [RegistrationController],
-  providers: [RegistrationService],
-  exports: [RegistrationService, TypeOrmModule],
+  providers: [RegistrationService, RegistrationRosterService],
+  exports: [RegistrationService, RegistrationRosterService, TypeOrmModule],
 })
 export class RegistrationModule {}

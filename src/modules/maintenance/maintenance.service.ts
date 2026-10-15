@@ -62,6 +62,8 @@ export class MaintenanceService {
           team_members,
           teams,
           registrations,
+          registration_roster_otps,
+          registration_roster_sessions,
           registration_submissions,
           tournament_categories,
           tournaments,

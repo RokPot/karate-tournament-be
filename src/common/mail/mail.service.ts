@@ -2,8 +2,18 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
 
 import { MailConfig } from './mail.config';
-import { buildInvitationEmail, buildRegistrationConfirmationEmail } from './mail.templates';
-import type { SendInvitationEmailParams, SendRegistrationConfirmationParams } from './mail.types';
+import {
+  buildInvitationEmail,
+  buildRegistrationConfirmationEmail,
+  buildRegistrationUpdatedEmail,
+  buildRosterOtpEmail,
+} from './mail.templates';
+import type {
+  SendInvitationEmailParams,
+  SendRegistrationConfirmationParams,
+  SendRegistrationUpdatedParams,
+  SendRosterOtpParams,
+} from './mail.types';
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
@@ -55,17 +65,46 @@ export class MailService implements OnModuleInit {
   /**
    * Queue registration confirmation in the background. Resolves immediately; SMTP/API runs after the HTTP response.
    */
+  isDebugOtpAllowed(): boolean {
+    return process.env.STAGE !== 'production' && !this.mailConfig.enabled;
+  }
+
+  async sendRosterOtp(params: SendRosterOtpParams): Promise<void> {
+    this.logger.log(`Queue roster OTP email to=${params.to} tournament=${params.tournamentName}`);
+    this.enqueue(`roster OTP to ${params.to}`, async () => {
+      const content = buildRosterOtpEmail(params);
+      await this.send({
+        to: params.to,
+        subject: content.subject,
+        html: content.html,
+        text: content.text,
+      });
+    });
+  }
+
   async sendRegistrationConfirmation(params: SendRegistrationConfirmationParams): Promise<void> {
+    this.queueRegistrationSummary(params, 'confirmation', buildRegistrationConfirmationEmail);
+  }
+
+  async sendRegistrationUpdated(params: SendRegistrationUpdatedParams): Promise<void> {
+    this.queueRegistrationSummary(params, 'updated', buildRegistrationUpdatedEmail);
+  }
+
+  private queueRegistrationSummary(
+    params: SendRegistrationConfirmationParams,
+    kind: 'confirmation' | 'updated',
+    build: typeof buildRegistrationConfirmationEmail,
+  ): void {
     if (params.registrations.length < 1) {
-      this.logger.warn(`Skip registration email to=${params.to}: no registrations to include`);
+      this.logger.warn(`Skip registration ${kind} email to=${params.to}: no registrations to include`);
       return;
     }
     this.logger.log(
-      `Queue registration email to=${params.to} count=${params.registrations.length} tournament=${params.tournamentName ?? 'n/a'}`,
+      `Queue registration ${kind} email to=${params.to} count=${params.registrations.length} tournament=${params.tournamentName ?? 'n/a'}`,
     );
-    this.enqueue(`registration confirmation to ${params.to}`, async () => {
-      this.logger.log(`Building registration email to=${params.to}`);
-      const content = buildRegistrationConfirmationEmail(params);
+    this.enqueue(`registration ${kind} to ${params.to}`, async () => {
+      this.logger.log(`Building registration ${kind} email to=${params.to}`);
+      const content = build(params);
       await this.send({
         to: params.to,
         subject: content.subject,
@@ -118,12 +157,7 @@ export class MailService implements OnModuleInit {
     }
   }
 
-  private async sendViaBrevoApi(params: {
-    to: string;
-    subject: string;
-    html: string;
-    text: string;
-  }): Promise<void> {
+  private async sendViaBrevoApi(params: { to: string; subject: string; html: string; text: string }): Promise<void> {
     const apiKey = this.mailConfig.apiKey!.trim();
     const sender = parseFromAddress(this.mailConfig.from!);
 
@@ -160,12 +194,7 @@ export class MailService implements OnModuleInit {
     this.logger.log(`Sent "${params.subject}" to ${params.to} via Brevo API messageId=${messageId}`);
   }
 
-  private async sendViaSmtp(params: {
-    to: string;
-    subject: string;
-    html: string;
-    text: string;
-  }): Promise<void> {
+  private async sendViaSmtp(params: { to: string; subject: string; html: string; text: string }): Promise<void> {
     const { host, port, from } = this.mailConfig;
     this.logger.log(`Sending "${params.subject}" to ${params.to} via SMTP ${host}:${port}`);
     const transporter = this.getTransporter();

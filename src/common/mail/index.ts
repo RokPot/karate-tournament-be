@@ -5,4 +5,6 @@ export type {
   RegistrationEmailItem,
   SendInvitationEmailParams,
   SendRegistrationConfirmationParams,
+  SendRegistrationUpdatedParams,
+  SendRosterOtpParams,
 } from './mail.types';

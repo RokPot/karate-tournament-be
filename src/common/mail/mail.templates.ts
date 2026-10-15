@@ -6,6 +6,7 @@ import type {
   RegistrationEmailItem,
   SendInvitationEmailParams,
   SendRegistrationConfirmationParams,
+  SendRosterOtpParams,
 } from './mail.types';
 
 const templateCache = new Map<string, string>();
@@ -47,6 +48,24 @@ function replaceParam(html: string, key: string, value: string): string {
   return html.replaceAll(`{{ params.${key} }}`, value);
 }
 
+function replaceIfBlock(html: string, key: string, value: string | null | undefined): string {
+  const startToken = `{{#if params.${key}}}`;
+  const endToken = '{{/if}}';
+  const keep = Boolean(value?.trim());
+  let result = html;
+  let start = result.indexOf(startToken);
+  while (start >= 0) {
+    const end = result.indexOf(endToken, start + startToken.length);
+    if (end < 0) {
+      throw new Error(`Unclosed {{#if params.${key}}} in email template`);
+    }
+    const inner = result.slice(start + startToken.length, end);
+    result = result.slice(0, start) + (keep ? inner : '') + result.slice(end + endToken.length);
+    start = result.indexOf(startToken);
+  }
+  return result;
+}
+
 /** Drop HTML comments so leftover template docs (e.g. triple-brace notes) never reach Brevo. */
 function stripHtmlComments(html: string): string {
   return html.replace(/<!--[\s\S]*?-->/g, '');
@@ -57,7 +76,7 @@ function replaceParticipantsEach(html: string, replacement: string): string {
   const startToken = '{{#each params.participants}}';
   const start = html.indexOf(startToken);
   if (start < 0) {
-    throw new Error('Missing {{#each params.participants}} in registration-confirmation.html');
+    throw new Error('Missing {{#each params.participants}} in registration email template');
   }
 
   let depth = 0;
@@ -244,6 +263,39 @@ function groupParticipants(registrations: RegistrationEmailItem[]): Array<{ name
   return Array.from(byName.entries()).map(([name, categories]) => ({ name, categories }));
 }
 
+export function buildRosterOtpEmail(params: SendRosterOtpParams): { subject: string; html: string; text: string } {
+  const tournamentName = params.tournamentName.trim() || 'Tournament';
+  const code = params.code.trim();
+  const firstName = params.firstName?.trim() || '';
+  const clubName = params.clubName?.trim() || '';
+  const expiresInMinutes = params.expiresInMinutes && params.expiresInMinutes > 0 ? params.expiresInMinutes : 10;
+  const subject = `Your registration code for ${tournamentName}`;
+
+  let html = loadTemplate('registration-otp.html');
+  html = replaceIfBlock(html, 'firstName', firstName);
+  html = replaceIfBlock(html, 'clubName', clubName);
+  html = replaceParam(html, 'firstName', escapeHtml(firstName));
+  html = replaceParam(html, 'clubName', escapeHtml(clubName));
+  html = replaceParam(html, 'tournamentName', escapeHtml(tournamentName));
+  html = replaceParam(html, 'code', escapeHtml(code));
+  html = replaceParam(html, 'expiresInMinutes', escapeHtml(String(expiresInMinutes)));
+  html = stripHtmlComments(html);
+
+  const text = [
+    ...(firstName ? [`Hi ${firstName},`, ''] : []),
+    `Use this code to continue your registration for ${tournamentName}.`,
+    ...(clubName ? [`Club: ${clubName}`] : []),
+    '',
+    `Registration code: ${code}`,
+    '',
+    `This code expires in ${expiresInMinutes} minutes.`,
+    '',
+    "If you didn't ask to continue this registration, you can ignore this email.",
+  ].join('\n');
+
+  return { subject, html, text };
+}
+
 export function buildInvitationEmail(params: SendInvitationEmailParams): {
   subject: string;
   html: string;
@@ -273,11 +325,19 @@ export function buildInvitationEmail(params: SendInvitationEmailParams): {
   return { subject, html, text };
 }
 
-export function buildRegistrationConfirmationEmail(
+type RegistrationSummaryEmailCopy = {
+  filename: string;
+  subject: (tournamentName: string) => string;
+  introLines: string[];
+  listHeading: string;
+};
+
+function buildRegistrationSummaryEmail(
   params: Pick<
     SendRegistrationConfirmationParams,
     'recipientName' | 'tournamentName' | 'clubName' | 'registrations' | 'fees'
   >,
+  copy: RegistrationSummaryEmailCopy,
 ): { subject: string; html: string; text: string } {
   const recipientName = params.recipientName?.trim() || 'there';
   const tournamentName =
@@ -285,9 +345,9 @@ export function buildRegistrationConfirmationEmail(
   const clubName = params.clubName?.trim() || params.registrations[0]?.clubName?.trim() || '';
   const registrationCount = params.registrations.length;
   const participants = groupParticipants(params.registrations);
-  const subject = `Registration confirmed — ${tournamentName}`;
+  const subject = copy.subject(tournamentName);
 
-  let html = loadTemplate('registration-confirmation.html');
+  let html = loadTemplate(copy.filename);
   html = replaceParam(html, 'recipientName', escapeHtml(recipientName));
   html = replaceParam(html, 'tournamentName', escapeHtml(tournamentName));
   html = replaceParam(html, 'registrationCount', escapeHtml(String(registrationCount)));
@@ -319,14 +379,45 @@ export function buildRegistrationConfirmationEmail(
   const text = [
     `Hi ${recipientName},`,
     '',
-    'Your registration was successful.',
+    ...copy.introLines,
     tournamentName,
     ...(clubName ? [clubName] : []),
     '',
-    `Registered (${registrationCount} registrations)`,
+    `${copy.listHeading} (${registrationCount} registrations)`,
     textRows,
     ...feeTextRows,
   ].join('\n');
 
   return { subject, html, text };
+}
+
+export function buildRegistrationConfirmationEmail(
+  params: Pick<
+    SendRegistrationConfirmationParams,
+    'recipientName' | 'tournamentName' | 'clubName' | 'registrations' | 'fees'
+  >,
+): { subject: string; html: string; text: string } {
+  return buildRegistrationSummaryEmail(params, {
+    filename: 'registration-confirmation.html',
+    subject: (tournamentName) => `Registration confirmed — ${tournamentName}`,
+    introLines: ['Your registration was successful.'],
+    listHeading: 'Registered',
+  });
+}
+
+export function buildRegistrationUpdatedEmail(
+  params: Pick<
+    SendRegistrationConfirmationParams,
+    'recipientName' | 'tournamentName' | 'clubName' | 'registrations' | 'fees'
+  >,
+): { subject: string; html: string; text: string } {
+  return buildRegistrationSummaryEmail(params, {
+    filename: 'registration-updated.html',
+    subject: (tournamentName) => `Registration updated — ${tournamentName}`,
+    introLines: [
+      'Your registration was updated.',
+      'This is your current total for this tournament after your latest edits.',
+    ],
+    listHeading: 'Current registrations',
+  });
 }

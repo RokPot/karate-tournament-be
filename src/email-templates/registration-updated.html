@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Registration updated</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <!--
+      Brevo transactional params:
+        params.recipientName     (optional) string
+        params.tournamentName    (optional) string
+        params.registrationCount (optional) number | string
+        params.participants      array of { name: string, categories: string[] }
+
+      Fallback if nested loops are awkward for BE:
+        params.registrationsHtml — pre-rendered athlete blocks (HTML string)
+        Place inside the registrations container instead of the #each block.
+        params.clubLine — pre-rendered club name paragraph (HTML string)
+        params.feesSection — pre-rendered fees due block (HTML string)
+    -->
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f8f7f4;
+      font-family: Roboto, Arial, Helvetica, sans-serif;
+      color: #1c1c1e;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="background-color: #f8f7f4; margin: 0; padding: 0"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="560"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="
+              width: 100%;
+              max-width: 560px;
+              background-color: #ffffff;
+              border: 1px solid #ebeae6;
+              border-collapse: separate;
+              border-radius: 8px;
+              overflow: hidden;
+            "
+          >
+            <!-- Brand strip -->
+            <tr>
+              <td
+                style="
+                  height: 4px;
+                  line-height: 4px;
+                  font-size: 0;
+                  background-color: #5c481c;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+
+            <!-- Body -->
+            <tr>
+              <td style="padding: 32px 28px 28px 28px">
+                <p
+                  style="
+                    margin: 0 0 16px 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #1c1c1e;
+                  "
+                >
+                  Hi {{ params.recipientName }},
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 8px 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #1c1c1e;
+                  "
+                >
+                  Your registration was updated.
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 8px 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  This is your current total for this tournament after your latest edits.
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 8px 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  {{ params.tournamentName }}
+                </p>
+
+                {{ params.clubLine }}
+
+                <p
+                  style="
+                    margin: 0 0 4px 0;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    font-weight: 500;
+                    color: #1c1c1e;
+                  "
+                >
+                  Current registrations
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 16px 0;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    font-weight: 400;
+                    color: #6b7280;
+                  "
+                >
+                  {{ params.registrationCount }} registrations
+                </p>
+
+                <!-- Athlete blocks: BE replaces the each loop with pre-rendered cards. -->
+                {{#each params.participants}}
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="
+                    width: 100%;
+                    margin: 0 0 8px 0;
+                    border: 1px solid #ebeae6;
+                    border-radius: 6px;
+                    border-collapse: separate;
+                  "
+                >
+                  <tr>
+                    <td style="padding: 14px 16px">
+                      <p
+                        style="
+                          margin: 0 0 8px 0;
+                          font-size: 16px;
+                          line-height: 1.4;
+                          font-weight: 500;
+                          color: #1c1c1e;
+                        "
+                      >
+                        {{ this.name }}
+                      </p>
+                      {{#each this.categories}}
+                      <p
+                        style="
+                          margin: 0 0 4px 0;
+                          font-size: 14px;
+                          line-height: 1.4;
+                          font-weight: 400;
+                          color: #6b7280;
+                        "
+                      >
+                        {{ this }}
+                      </p>
+                      {{/each}}
+                    </td>
+                  </tr>
+                </table>
+                {{/each}}
+
+                {{ params.feesSection }}
+
+                <!-- Footer -->
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="width: 100%; margin-top: 28px"
+                >
+                  <tr>
+                    <td
+                      style="
+                        border-top: 1px solid #ebeae6;
+                        padding-top: 16px;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        color: #6b7280;
+                      "
+                    >
+                      Karate App
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

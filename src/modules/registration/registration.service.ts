@@ -572,7 +572,7 @@ export class RegistrationService {
     return { coach, results };
   }
 
-  private validateTeamsPayload(
+  validateTeamsPayload(
     data: BulkPublicRegistrationDto,
     tournamentCategories: Category[],
     tournamentStartDate: Date,
@@ -779,7 +779,7 @@ export class RegistrationService {
     return results;
   }
 
-  private async createOrAttachTeamRegistration(
+  async createOrAttachTeamRegistration(
     user: User,
     data: CreateRegistrationForUserParams & { teamId: string; teamRole: TeamRole },
   ): Promise<Registration> {
@@ -1310,7 +1310,7 @@ export class RegistrationService {
     throw new ForbiddenException('Insufficient permissions to list registrations for this user');
   }
 
-  private assertTournamentOpenForRegistration(
+  assertTournamentOpenForRegistration(
     tournament: Tournament,
     unapprovedAs: 'not_found' | 'bad_request' = 'bad_request',
   ): void {
