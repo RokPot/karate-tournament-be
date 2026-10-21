@@ -117,6 +117,23 @@ export class CategoryResponseDto {
   teamReservesSize!: number | null;
 
   @Expose()
+  @ApiProperty({
+    description: 'Other category IDs that may supply limited feeder athletes. Empty when none are configured.',
+    type: [String],
+    example: [],
+  })
+  feederCategoryIds!: string[];
+
+  @Expose()
+  @ApiPropertyOptional({
+    description:
+      'Maximum feeder-only athletes on one team roster (starters and reserves). Null or 0 = none. Using zero feeder athletes is always allowed.',
+    example: 1,
+    nullable: true,
+  })
+  feederParticipantLimit!: number | null;
+
+  @Expose()
   @ApiPropertyOptional({
     description: 'Owning club ID (null = global catalog)',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -170,6 +187,8 @@ export class CategoryResponseDto {
       beltMax: category.beltMax,
       teamSize: category.teamSize,
       teamReservesSize: category.teamReservesSize,
+      feederCategoryIds: (category.feeders ?? []).map((feeder) => feeder.feederCategoryId),
+      feederParticipantLimit: category.feederParticipantLimit ?? null,
       clubId: category.clubId ?? null,
       createdAt:
         category.createdAt instanceof Date ? category.createdAt.toISOString() : String(category.createdAt || ''),

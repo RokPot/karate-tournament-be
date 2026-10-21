@@ -40,7 +40,7 @@ export class CategoryController {
   @ApiOperation({
     summary: 'Create a new category',
     description:
-      'Creates a new tournament category. Only name and discipline are required; subDiscipline, gender, age, weight, belt limits, and team size (teamSize, teamReservesSize) are optional. clubId is optional for admins (null = global) and defaults to the caller club for club owners.',
+      'Creates a new tournament category. Only name and discipline are required; subDiscipline, gender, age, weight, belt limits, and team size (teamSize, teamReservesSize) are optional. Team categories may also set feederCategoryIds and feederParticipantLimit. clubId is optional for admins (null = global) and defaults to the caller club for club owners.',
   })
   @ApiResponse({ status: 201, description: 'Category created successfully', type: CategoryResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })

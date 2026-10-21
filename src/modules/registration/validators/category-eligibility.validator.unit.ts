@@ -6,7 +6,7 @@ import { parseDateOfBirth } from '~common/utils/date-only.utils';
 import { type Category } from '../../category/category.entity';
 import { type User } from '../../user/user.entity';
 
-import { ageInCalendarYear, isAgeWithinCategoryLimits, userFitsCategory } from './category-eligibility.validator';
+import { ageInCalendarYear, isAgeWithinCategoryLimits, isFeederOnlyParticipant, userFitsCategory } from './category-eligibility.validator';
 
 const refDate = new Date(2026, 4, 20); // 20 May 2026
 
@@ -25,6 +25,7 @@ function categoryWithAgeLimits(ageMin: number | null, ageMax: number | null): Ca
     beltMax: null,
     teamSize: null,
     teamReservesSize: null,
+    feederParticipantLimit: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   } as Category;
@@ -82,5 +83,28 @@ describe('userFitsCategory calendar-year age', () => {
   it('accepts ISO date-time string for date of birth', () => {
     const user = userWithDateOfBirthString('2018-02-02T00:00:00.000Z');
     expect(ageInCalendarYear(user.dateOfBirth!, refDate)).toBe(8);
+  });
+});
+
+describe('isFeederOnlyParticipant', () => {
+  const team = categoryWithAgeLimits(10, 12);
+  const younger = categoryWithAgeLimits(8, 10);
+
+  it('is true when the athlete misses the team band but fits a feeder', () => {
+    const user = userWithDateOfBirthString('2017-02-02');
+    expect(ageInCalendarYear(user.dateOfBirth!, refDate)).toBe(9);
+    expect(isFeederOnlyParticipant(user, team, [younger], null, refDate)).toBe(true);
+  });
+
+  it('is false when the athlete already fits the team category', () => {
+    const user = userWithDateOfBirthString('2015-02-02');
+    expect(ageInCalendarYear(user.dateOfBirth!, refDate)).toBe(11);
+    expect(isFeederOnlyParticipant(user, team, [younger], null, refDate)).toBe(false);
+  });
+
+  it('is false when the athlete fits neither category', () => {
+    const user = userWithDateOfBirthString('2020-02-02');
+    expect(ageInCalendarYear(user.dateOfBirth!, refDate)).toBe(6);
+    expect(isFeederOnlyParticipant(user, team, [younger], null, refDate)).toBe(false);
   });
 });

@@ -178,7 +178,13 @@ export class TournamentService {
 
     return this.tournamentRepository.find({
       where: { id: In(ids) },
-      relations: ['createdByUser', 'categoryAssignments', 'categoryAssignments.category', 'club'],
+      relations: [
+        'createdByUser',
+        'categoryAssignments',
+        'categoryAssignments.category',
+        'categoryAssignments.category.feeders',
+        'club',
+      ],
       order: {
         startDate: 'DESC',
         createdAt: 'DESC',
@@ -195,7 +201,13 @@ export class TournamentService {
   async findById(id: string): Promise<Tournament | null> {
     return this.tournamentRepository.findOne({
       where: { id },
-      relations: ['createdByUser', 'categoryAssignments', 'categoryAssignments.category', 'club'],
+      relations: [
+        'createdByUser',
+        'categoryAssignments',
+        'categoryAssignments.category',
+        'categoryAssignments.category.feeders',
+        'club',
+      ],
       order: {
         categoryAssignments: {
           sortOrder: 'ASC',
@@ -491,7 +503,13 @@ export class TournamentService {
   private findMany(where: FindOptionsWhere<Tournament> | FindOptionsWhere<Tournament>[]): Promise<Tournament[]> {
     return this.tournamentRepository.find({
       where,
-      relations: ['createdByUser', 'categoryAssignments', 'categoryAssignments.category', 'club'],
+      relations: [
+        'createdByUser',
+        'categoryAssignments',
+        'categoryAssignments.category',
+        'categoryAssignments.category.feeders',
+        'club',
+      ],
       order: {
         startDate: 'ASC',
         createdAt: 'DESC',

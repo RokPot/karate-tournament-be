@@ -1,6 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { IsString, IsEnum, IsNumber, IsInt, IsOptional, IsUUID, MaxLength, Min, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsNumber,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  IsArray,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 import { Discipline, SubDiscipline, CategoryGender, BeltLevel } from '~common/enums';
 
@@ -159,6 +170,33 @@ export class CreateCategoryDto {
   @IsInt()
   @Min(0)
   teamReservesSize?: number | null;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description:
+      'Other category IDs whose eligible athletes may fill feeder spots on this team. Only when teamSize is set. Empty or omit = none.',
+    type: [String],
+    example: ['123e4567-e89b-12d3-a456-426614174000'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  feederCategoryIds?: string[];
+
+  @Expose()
+  @ApiPropertyOptional({
+    description:
+      'Maximum athletes on one team (starters and reserves) who do not fit this category but fit a feeder category. Null or 0 = none. Not required to use any feeder spots.',
+    example: 1,
+    minimum: 0,
+    nullable: true,
+  })
+  @IsOptional()
+  @ValidateIf((_o, v) => v != null)
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  feederParticipantLimit?: number | null;
 
   @Expose()
   @ApiPropertyOptional({

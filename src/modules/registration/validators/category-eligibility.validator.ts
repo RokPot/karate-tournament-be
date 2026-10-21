@@ -1,7 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
 import { CategoryGender, Gender } from '~common/enums';
-
 import { isBeltInRange } from '~common/utils/belt-level.utils';
 import { coerceDateOfBirthFromDb } from '~common/utils/date-only.utils';
 
@@ -25,11 +24,7 @@ function toNumber(value: number | string | null | undefined): number | null {
 /**
  * Both bounds inclusive: ageMin <= age <= ageMax (null bound = no limit).
  */
-export function isAgeWithinCategoryLimits(
-  age: number,
-  ageMin: number | null,
-  ageMax: number | null,
-): boolean {
+export function isAgeWithinCategoryLimits(age: number, ageMin: number | null, ageMax: number | null): boolean {
   if (ageMin != null && age < ageMin) {
     return false;
   }
@@ -135,6 +130,44 @@ export function userFitsCategory(
   ageAtDateRef: Date,
 ): boolean {
   return getUserCategoryEligibilityFailure(user, category, effectiveWeight, ageAtDateRef) === null;
+}
+
+export function userFitsAnyCategory(
+  user: User,
+  categories: Category[],
+  effectiveWeight: number | null | undefined,
+  ageAtDateRef: Date,
+): boolean {
+  return categories.some((category) => userFitsCategory(user, category, effectiveWeight, ageAtDateRef));
+}
+
+/**
+ * Fits at least one feeder category and does not fit the team category itself.
+ * People who fit the team category stay on the main list.
+ */
+export function isFeederOnlyParticipant(
+  user: User,
+  category: Category,
+  feederCategories: Category[],
+  effectiveWeight: number | null | undefined,
+  ageAtDateRef: Date,
+): boolean {
+  if (feederCategories.length === 0) {
+    return false;
+  }
+  if (userFitsCategory(user, category, effectiveWeight, ageAtDateRef)) {
+    return false;
+  }
+  return userFitsAnyCategory(user, feederCategories, effectiveWeight, ageAtDateRef);
+}
+
+/** Null or 0 means no feeder spots. This is a maximum, not a required count. */
+export function feederSlotLimit(category: Pick<Category, 'feederParticipantLimit'>): number {
+  const limit = category.feederParticipantLimit;
+  if (limit == null || limit <= 0) {
+    return 0;
+  }
+  return limit;
 }
 
 /**

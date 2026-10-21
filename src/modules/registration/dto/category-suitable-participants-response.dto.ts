@@ -70,4 +70,13 @@ export class CategorySuitableParticipantsItemDto {
     type: [SuitableParticipantDto],
   })
   participants!: SuitableParticipantDto[];
+
+  @Expose()
+  @Type(() => SuitableParticipantDto)
+  @ApiProperty({
+    description:
+      'Participants who do not fit this category but fit a configured feeder category. Empty unless this is a team category with feeder categories and a positive feederParticipantLimit. Not required on the roster.',
+    type: [SuitableParticipantDto],
+  })
+  otherEligibleParticipants!: SuitableParticipantDto[];
 }

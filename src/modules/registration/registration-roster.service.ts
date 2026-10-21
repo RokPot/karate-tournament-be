@@ -209,7 +209,7 @@ export class RegistrationRosterService {
     const canonical = oldestSubmission(submissions);
 
     const tournamentCategories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
-    this.registrationService.validateTeamsPayload(dto, tournamentCategories, tournament.startDate);
+    await this.registrationService.validateTeamsPayload(dto, tournamentCategories, tournament.startDate);
 
     const rosterRegs = await this.registrationsForSubmissionIds(submissions.map((submission) => submission.id));
     const rosterUserIds = new Set(rosterRegs.map((registration) => registration.userId));
@@ -240,6 +240,15 @@ export class RegistrationRosterService {
     }
 
     const desired = this.desiredRegistrationKeys(dto, participantUsers);
+    const teamRosterKeys = new Set<string>();
+    for (const team of dto.teams ?? []) {
+      for (const participantIndex of [...team.starters, ...(team.reserves ?? [])]) {
+        const user = participantUsers[participantIndex];
+        if (user) {
+          teamRosterKeys.add(`${user.id}:${team.categoryId}`);
+        }
+      }
+    }
 
     for (const registration of rosterRegs) {
       const key = `${registration.userId}:${registration.categoryId}`;
@@ -270,6 +279,7 @@ export class RegistrationRosterService {
         finalWeight: item.finalWeight,
         submissionId: canonical.id,
         unapprovedAs: 'not_found',
+        ...(teamRosterKeys.has(`${item.user.id}:${item.categoryId}`) ? { eligibility: 'team-roster' as const } : {}),
       });
     }
 

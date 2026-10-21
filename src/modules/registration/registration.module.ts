@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MailModule } from '~common/mail';
 
+import { CategoryFeeder } from '../category/category-feeder.entity';
 import { Category } from '../category/category.entity';
 import { Club } from '../club/club.entity';
 import { Tournament } from '../tournament/tournament.entity';
@@ -34,6 +35,7 @@ import { Team } from './team.entity';
       TeamMember,
       Tournament,
       Category,
+      CategoryFeeder,
       Club,
       User,
     ]),

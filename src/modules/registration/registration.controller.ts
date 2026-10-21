@@ -369,7 +369,7 @@ export class RegistrationController {
   @ApiOperation({
     summary: 'Get suitable participants per category (public)',
     description:
-      'Returns each tournament category with participants eligible for it (age, belt, gender when provided, and weight when provided). Weight is skipped for categories with no weight limits. Participants are matched by request array index via participantIndex.',
+      'Returns each tournament category with participants eligible for it, plus otherEligibleParticipants who only fit a configured feeder category (team categories with a positive feeder limit). Weight is skipped for categories with no weight limits. Participants are matched by request array index via participantIndex.',
   })
   @ApiResponse({
     status: 200,
@@ -387,6 +387,18 @@ export class RegistrationController {
         new CategorySuitableParticipantsItemDto({
           category: CategoryResponseDto.fromDomain(item.category),
           participants: item.participants.map(
+            (p) =>
+              new SuitableParticipantDto({
+                participantIndex: p.participantIndex,
+                firstName: p.firstName,
+                lastName: p.lastName,
+                weight: p.weight,
+                dateOfBirth: p.dateOfBirth,
+                gender: p.gender,
+                beltLevel: p.beltLevel ?? null,
+              }),
+          ),
+          otherEligibleParticipants: item.otherEligibleParticipants.map(
             (p) =>
               new SuitableParticipantDto({
                 participantIndex: p.participantIndex,

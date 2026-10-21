@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { isAdmin, isClubStaff, isJudge } from '~common/auth';
 import {
@@ -47,7 +47,13 @@ import { groupBySubmissionAccount } from './submission-account-key';
 import { TeamMember } from './team-member.entity';
 import { resolveTeamName, teamNameScopeKey } from './team-name';
 import { Team } from './team.entity';
-import { userFitsCategory, validateUserFitsCategory } from './validators/category-eligibility.validator';
+import {
+  feederSlotLimit,
+  isFeederOnlyParticipant,
+  userFitsAnyCategory,
+  userFitsCategory,
+  validateUserFitsCategory,
+} from './validators/category-eligibility.validator';
 
 const REGISTRATION_DETAIL_RELATIONS = [
   'user',
@@ -92,6 +98,8 @@ export interface CreateRegistrationForUserParams {
   teamRole?: TeamRole | null;
   submissionId?: string | null;
   unapprovedAs?: 'not_found' | 'bad_request';
+  /** Team roster writes already checked feeder slots. Individual creates stay strict. */
+  eligibility?: 'strict' | 'team-roster';
 }
 
 export interface BulkRegistrationResultItem {
@@ -131,6 +139,7 @@ export interface SuitableParticipantItem {
 export interface CategorySuitableParticipantsItem {
   category: Category;
   participants: SuitableParticipantItem[];
+  otherEligibleParticipants: SuitableParticipantItem[];
 }
 
 export interface RegistrationSubmissionWithFees {
@@ -336,7 +345,9 @@ export class RegistrationService {
     }
 
     const effectiveWeight = data.finalWeight ?? user.weight;
-    validateUserFitsCategory(user, category, effectiveWeight, tournament.startDate);
+    if (data.eligibility !== 'team-roster') {
+      validateUserFitsCategory(user, category, effectiveWeight, tournament.startDate);
+    }
 
     const existing = await this.registrationRepository.findOne({
       where: {
@@ -470,7 +481,7 @@ export class RegistrationService {
     this.assertTournamentOpenForRegistration(tournament, 'not_found');
 
     const tournamentCategories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
-    this.validateTeamsPayload(data, tournamentCategories, tournament.startDate);
+    await this.validateTeamsPayload(data, tournamentCategories, tournament.startDate);
 
     const club = data.clubName ? await this.resolveClubByName(data.clubName) : null;
     const resolvedClubId = club?.id ?? null;
@@ -572,11 +583,11 @@ export class RegistrationService {
     return { coach, results };
   }
 
-  validateTeamsPayload(
+  async validateTeamsPayload(
     data: BulkPublicRegistrationDto,
     tournamentCategories: Category[],
     tournamentStartDate: Date,
-  ): void {
+  ): Promise<void> {
     const teams = data.teams ?? [];
     if (teams.length === 0) {
       return;
@@ -585,6 +596,7 @@ export class RegistrationService {
     const participantCount = data.participants.length;
     const categoriesById = new Map(tournamentCategories.map((category) => [category.id, category]));
     const rostersByCategory = new Map<string, Set<string>>();
+    await this.hydrateCategoryFeeders(tournamentCategories);
 
     teams.forEach((team, teamIndex) => {
       const category = categoriesById.get(team.categoryId);
@@ -606,6 +618,10 @@ export class RegistrationService {
         throw new BadRequestException(`Team ${teamIndex}: reserves length must be between 0 and ${maxReserves}`);
       }
 
+      const feederCategories = this.feederCategoriesOf(category);
+      const feederLimit = feederSlotLimit(category);
+      let feederOnlyCount = 0;
+
       const allIndexes = [...starters, ...reserves];
       const seenOnTeam = new Set<number>();
       for (const participantIndex of allIndexes) {
@@ -619,11 +635,25 @@ export class RegistrationService {
 
         const participant = data.participants[participantIndex];
         const syntheticUser = this.toSyntheticUser(participant);
-        if (!userFitsCategory(syntheticUser, category, participant.weight, tournamentStartDate)) {
-          throw new BadRequestException(
-            `Team ${teamIndex}: participant ${participantIndex} is not eligible for this category`,
-          );
+        if (userFitsCategory(syntheticUser, category, participant.weight, tournamentStartDate)) {
+          continue;
         }
+        if (
+          feederLimit > 0 &&
+          userFitsAnyCategory(syntheticUser, feederCategories, participant.weight, tournamentStartDate)
+        ) {
+          feederOnlyCount += 1;
+          continue;
+        }
+        throw new BadRequestException(
+          `Team ${teamIndex}: participant ${participantIndex} is not eligible for this category`,
+        );
+      }
+
+      if (feederOnlyCount > feederLimit) {
+        throw new BadRequestException(
+          `Team ${teamIndex}: at most ${feederLimit} participant(s) may come from other allowed categories`,
+        );
       }
 
       const rosterKey = [...allIndexes].sort((a, b) => a - b).join(',');
@@ -801,7 +831,7 @@ export class RegistrationService {
         registration = existing;
       }
     } else {
-      registration = await this.createRegistrationForUser(user, data);
+      registration = await this.createRegistrationForUser(user, { ...data, eligibility: 'team-roster' });
     }
 
     const alreadyOnThisTeam = await this.teamMemberRepository.findOne({
@@ -845,6 +875,31 @@ export class RegistrationService {
     const categories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
     const effectiveWeight = user.weight;
     return categories.filter((category) => userFitsCategory(user, category, effectiveWeight, tournament.startDate));
+  }
+
+  private feederCategoriesOf(category: Category): Category[] {
+    return (category.feeders ?? [])
+      .map((feeder) => feeder.feederCategory)
+      .filter((feeder): feeder is Category => feeder != null);
+  }
+
+  private async hydrateCategoryFeeders(categories: Category[]): Promise<void> {
+    if (categories.length === 0) {
+      return;
+    }
+    const loaded = await this.categoryRepository.find({
+      where: { id: In(categories.map((category) => category.id)) },
+      relations: ['feeders', 'feeders.feederCategory'],
+    });
+    const byId = new Map(loaded.map((category) => [category.id, category]));
+    for (const category of categories) {
+      const full = byId.get(category.id);
+      if (!full) {
+        continue;
+      }
+      category.feeders = full.feeders ?? [];
+      category.feederParticipantLimit = full.feederParticipantLimit;
+    }
   }
 
   private toSyntheticUser(
@@ -955,24 +1010,50 @@ export class RegistrationService {
 
     const categories = (tournament.categoryAssignments ?? []).map((assignment) => assignment.category);
     const ageAtDateRef = tournament.startDate;
+    await this.hydrateCategoryFeeders(categories);
 
-    return categories.map((category) => ({
-      category,
-      participants: participants
-        .map((participant, participantIndex) => ({ participant, participantIndex }))
-        .filter(({ participant }) =>
-          userFitsCategory(this.toSyntheticUser(participant), category, participant.weight, ageAtDateRef),
-        )
-        .map(({ participant, participantIndex }) => ({
-          participantIndex,
-          firstName: participant.firstName,
-          lastName: participant.lastName,
-          weight: participant.weight,
-          dateOfBirth: formatDateOnlyAsDateTime(parseDateOfBirth(participant.dateOfBirth)),
-          gender: participant.gender ?? null,
-          beltLevel: participant.beltLevel ?? null,
-        })),
-    }));
+    return categories.map((category) => {
+      const feederCategories = this.feederCategoriesOf(category);
+      const showFeederList = category.teamSize != null && feederSlotLimit(category) > 0 && feederCategories.length > 0;
+      const rows = participants.map((participant, participantIndex) => ({ participant, participantIndex }));
+      const toItem = ({
+        participant,
+        participantIndex,
+      }: {
+        participant: PublicParticipantProfileDto;
+        participantIndex: number;
+      }): SuitableParticipantItem => ({
+        participantIndex,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        weight: participant.weight,
+        dateOfBirth: formatDateOnlyAsDateTime(parseDateOfBirth(participant.dateOfBirth)),
+        gender: participant.gender ?? null,
+        beltLevel: participant.beltLevel ?? null,
+      });
+
+      return {
+        category,
+        participants: rows
+          .filter(({ participant }) =>
+            userFitsCategory(this.toSyntheticUser(participant), category, participant.weight, ageAtDateRef),
+          )
+          .map(toItem),
+        otherEligibleParticipants: showFeederList
+          ? rows
+              .filter(({ participant }) =>
+                isFeederOnlyParticipant(
+                  this.toSyntheticUser(participant),
+                  category,
+                  feederCategories,
+                  participant.weight,
+                  ageAtDateRef,
+                ),
+              )
+              .map(toItem)
+          : [],
+      };
+    });
   }
 
   /**

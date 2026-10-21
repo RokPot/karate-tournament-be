@@ -17,6 +17,8 @@ import { Club } from '../club/club.entity';
 import { Registration } from '../registration/registration.entity';
 import { TournamentCategory } from '../tournament/tournament-category.entity';
 
+import { CategoryFeeder } from './category-feeder.entity';
+
 /**
  * Category Entity
  * Defines division by age, weight, gender, belt, discipline.
@@ -74,6 +76,9 @@ export class Category {
   @Column({ type: 'int', nullable: true })
   teamReservesSize!: number | null;
 
+  @Column({ type: 'int', nullable: true })
+  feederParticipantLimit!: number | null;
+
   @Column({ type: 'uuid', nullable: true })
   clubId!: string | null;
 
@@ -90,6 +95,9 @@ export class Category {
 
   @OneToMany(() => TournamentCategory, (tournamentAssignment) => tournamentAssignment.category)
   tournamentAssignments!: TournamentCategory[];
+
+  @OneToMany(() => CategoryFeeder, (feeder) => feeder.category)
+  feeders!: CategoryFeeder[];
 
   @OneToMany(() => Registration, (registration) => registration.category)
   registrations!: Registration[];
