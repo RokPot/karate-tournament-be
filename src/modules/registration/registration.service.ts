@@ -10,7 +10,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
-import { isAdmin, isClubStaff, isJudge } from '~common/auth';
+import { isAdmin, isClubOwner, isClubStaff, isJudge } from '~common/auth';
 import {
   BeltLevel,
   Gender,
@@ -39,7 +39,9 @@ import { BulkPublicRegistrationDto } from './dto/bulk-public-registration.dto';
 import { BulkTeamDto } from './dto/bulk-team.dto';
 import { CreateRegistrationWithUserDto } from './dto/create-registration-with-user.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
+import { CreateStaffRegistrationDto } from './dto/create-staff-registration.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
+import { UpdateRegistrationIdentityDto } from './dto/update-registration-identity.dto';
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { RegistrationSubmission } from './registration-submission.entity';
 import { Registration } from './registration.entity';
@@ -1229,6 +1231,153 @@ export class RegistrationService {
     return this.registrationRepository.save(registration);
   }
 
+  /**
+   * Staff adds one participant to one individual category (admin or owning club owner).
+   * Team categories are rejected: rosters are managed elsewhere.
+   */
+  async createForStaff(data: CreateStaffRegistrationDto, caller: User): Promise<Registration> {
+    const tournament = await this.tournamentRepository.findOne({
+      where: { id: data.tournamentId },
+      relations: ['categoryAssignments'],
+    });
+    if (!tournament) {
+      throw new NotFoundException(`Tournament with ID ${data.tournamentId} not found`);
+    }
+    this.assertCanStaffManageRegistrations(caller, tournament);
+    this.assertTournamentOpenForRegistration(tournament);
+
+    const category = await this.categoryRepository.findOne({ where: { id: data.categoryId } });
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${data.categoryId} not found`);
+    }
+    const assigned = (tournament.categoryAssignments ?? []).some((assignment) => assignment.categoryId === category.id);
+    if (!assigned) {
+      throw new NotFoundException(`Category with ID ${category.id} is not part of tournament ${tournament.id}`);
+    }
+    if (isTeamDiscipline(category.discipline)) {
+      throw new BadRequestException(
+        'Team categories cannot be filled from this endpoint; manage the team roster instead',
+      );
+    }
+
+    // Check eligibility before touching the user row so a rejected request changes nothing.
+    const probe = {
+      gender: data.gender,
+      beltLevel: data.beltLevel,
+      dateOfBirth: parseDateOfBirth(data.dateOfBirth),
+    } as User;
+    const existingUser = data.email ? await this.findTempUserByEmail(data.email) : null;
+    const probeWeight = data.finalWeight ?? data.weight ?? existingUser?.weight ?? null;
+    validateUserFitsCategory(probe, category, probeWeight, tournament.startDate);
+
+    const clubId = data.clubId ?? null;
+    if (clubId) {
+      const club = await this.clubRepository.findOne({ where: { id: clubId } });
+      if (!club) {
+        throw new NotFoundException(`Club with ID ${clubId} not found`);
+      }
+    }
+
+    const user = data.email
+      ? await this.findOrCreateTempUserByEmail({
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          weight: data.weight,
+          dateOfBirth: data.dateOfBirth,
+          gender: data.gender,
+          beltLevel: data.beltLevel,
+          clubId: data.clubId,
+        })
+      : await this.findOrCreateBulkParticipant({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          clubId,
+          weight: data.weight,
+          dateOfBirth: data.dateOfBirth,
+          gender: data.gender,
+          beltLevel: data.beltLevel,
+        });
+
+    const registration = await this.createRegistrationForUser(user, {
+      tournamentId: tournament.id,
+      categoryId: category.id,
+      clubId,
+      finalWeight: data.finalWeight,
+      unapprovedAs: 'bad_request',
+    });
+    const full = await this.findById(registration.id);
+    if (!full) {
+      throw new NotFoundException(`Registration with ID ${registration.id} not found`);
+    }
+    return full;
+  }
+
+  /**
+   * Staff edit of the participant behind a registration (admin or owning club owner).
+   * Identity fields go on the user so the person's other registrations stay consistent;
+   * finalWeight stays on this registration. Every individual-category registration the
+   * person has in this tournament is re-checked first, and nothing is written on failure.
+   */
+  async updateIdentityForStaff(id: string, data: UpdateRegistrationIdentityDto, caller: User): Promise<Registration> {
+    const registration = await this.findById(id);
+    if (!registration) {
+      throw new NotFoundException(`Registration with ID ${id} not found`);
+    }
+    this.assertCanStaffManageRegistrations(caller, registration.tournament);
+    this.assertTournamentOpenForRegistration(registration.tournament);
+
+    const user = registration.user ?? (await this.userService.findById(registration.userId));
+    if (!user) {
+      throw new NotFoundException(`User with ID ${registration.userId} not found`);
+    }
+
+    const changes: Partial<User> = {};
+    if (data.firstName !== undefined) changes.firstName = data.firstName.trim();
+    if (data.lastName !== undefined) changes.lastName = data.lastName.trim();
+    if (data.gender !== undefined) changes.gender = data.gender;
+    if (data.beltLevel !== undefined) changes.beltLevel = data.beltLevel;
+    if (data.weight !== undefined) changes.weight = data.weight;
+    if (data.dateOfBirth !== undefined) changes.dateOfBirth = parseDateOfBirth(data.dateOfBirth);
+    const nextUser = { ...user, ...changes } as User;
+    const nextFinalWeight = data.finalWeight !== undefined ? data.finalWeight : registration.finalWeight;
+
+    const siblings = await this.registrationRepository.find({
+      where: { userId: user.id, tournamentId: registration.tournamentId },
+      relations: ['category'],
+    });
+    for (const sibling of siblings) {
+      // Team rosters may legitimately include feeder-only athletes, so only individual categories are re-checked.
+      if (!sibling.category || isTeamDiscipline(sibling.category.discipline)) {
+        continue;
+      }
+      const finalWeight = sibling.id === registration.id ? nextFinalWeight : sibling.finalWeight;
+      validateUserFitsCategory(
+        nextUser,
+        sibling.category,
+        finalWeight ?? nextUser.weight,
+        registration.tournament.startDate,
+      );
+    }
+
+    if (Object.keys(changes).length > 0) {
+      await this.userRepository.update({ id: user.id }, changes);
+    }
+    if (data.finalWeight !== undefined) {
+      await this.registrationRepository.update({ id: registration.id }, { finalWeight: data.finalWeight });
+    }
+
+    const full = await this.findById(id);
+    if (!full) {
+      throw new NotFoundException(`Registration with ID ${id} not found`);
+    }
+    return full;
+  }
+
+  private findTempUserByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { auth0Id: `temp-${email}` } });
+  }
+
   async update(id: string, data: UpdateRegistrationDto, caller: User): Promise<Registration> {
     const registration = await this.findById(id);
     if (!registration) {
@@ -1304,7 +1453,7 @@ export class RegistrationService {
       throw new NotFoundException(`Registration with ID ${id} not found`);
     }
 
-    this.assertCanMutateRegistration(caller, registration);
+    this.assertCanStaffManageRegistrations(caller, registration.tournament);
     this.assertTournamentOpenForRegistration(registration.tournament);
     await this.registrationRepository.delete(id);
     this.logger.log(`Deleted registration ${id}`);
@@ -1361,6 +1510,17 @@ export class RegistrationService {
     if (!canRead) {
       throw new ForbiddenException('Insufficient permissions to list registrations for this tournament');
     }
+  }
+
+  /** Staff registration management: platform admin or the owner of the hosting club. */
+  private assertCanStaffManageRegistrations(user: User, tournament: Tournament): void {
+    if (isAdmin(user.roles)) {
+      return;
+    }
+    if (isClubOwner(user.roles) && user.clubId && tournament.clubId === user.clubId) {
+      return;
+    }
+    throw new ForbiddenException('Only an admin or the owner of the hosting club can manage these registrations');
   }
 
   private assertCanMutateRegistration(user: User, registration: Registration): void {

@@ -7,6 +7,7 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -34,6 +35,7 @@ import {
 } from './dto/category-suitable-participants-response.dto';
 import { CreateRegistrationWithUserDto } from './dto/create-registration-with-user.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
+import { CreateStaffRegistrationDto } from './dto/create-staff-registration.dto';
 import { MyRegistrationsQueryDto } from './dto/my-registrations-query.dto';
 import { PublicParticipantProfileDto } from './dto/public-participant-profile.dto';
 import { PublicParticipantSuitableCategoriesItemDto } from './dto/public-participant-suitable-categories-response.dto';
@@ -60,6 +62,7 @@ import { SuitableCategoriesQueryDto } from './dto/suitable-categories-query.dto'
 import { TournamentRegistrationCountsQueryDto } from './dto/tournament-registration-counts-query.dto';
 import { TournamentRegistrationCountItemDto } from './dto/tournament-registration-counts-response.dto';
 import { TournamentRegistrationsQueryDto } from './dto/tournament-registrations-query.dto';
+import { UpdateRegistrationIdentityDto } from './dto/update-registration-identity.dto';
 import { UpdateRegistrationDto } from './dto/update-registration.dto';
 import { UserRegistrationsQueryDto } from './dto/user-registrations-query.dto';
 import { RegistrationRosterService } from './registration-roster.service';
@@ -137,6 +140,32 @@ export class RegistrationController {
     }
 
     return RegistrationResponseDto.fromDomain(fullRegistration);
+  }
+
+  @Post('staff')
+  @ApiOperation({
+    summary: 'Add a participant to a category (staff)',
+    description:
+      'Admin or owner of the hosting club. Finds or creates the participant (by email when given, otherwise club + name + date of birth) and registers them in one individual category. Tournament must be approved or in progress. Team categories are rejected.',
+  })
+  @ApiResponse({ status: 201, description: 'Registration created', type: RegistrationResponseDto })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed, ineligible for the category, team category, or registration not open',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not an admin or the hosting club owner' })
+  @ApiResponse({ status: 404, description: 'Tournament, category, or club not found' })
+  @ApiResponse({ status: 409, description: 'Conflict - already registered in this category' })
+  async createForStaff(
+    @CurrentUserEntity() currentUser: User,
+    @Body() dto: CreateStaffRegistrationDto,
+  ): Promise<RegistrationResponseDto> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const registration = await this.registrationService.createForStaff(dto, currentUser);
+    return RegistrationResponseDto.fromDomain(registration);
   }
 
   @Public()
@@ -566,6 +595,32 @@ export class RegistrationController {
     return RegistrationResponseDto.fromDomain(registration);
   }
 
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Edit the participant behind a registration (staff)',
+    description:
+      "Admin or owner of the hosting club. Updates the participant profile (name, gender, date of birth, weight, belt) so their other registrations stay consistent, and optionally this registration's finalWeight. Every individual category the person is registered in for this tournament is re-checked; if any no longer fits the request is rejected and nothing changes. Tournament must be approved or in progress.",
+  })
+  @ApiResponse({ status: 200, description: 'Registration updated', type: RegistrationResponseDto })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed, participant would no longer fit a category, or registration not open',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not an admin or the hosting club owner' })
+  @ApiResponse({ status: 404, description: 'Registration not found' })
+  async updateIdentity(
+    @CurrentUserEntity() currentUser: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateRegistrationIdentityDto,
+  ): Promise<RegistrationResponseDto> {
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+    const registration = await this.registrationService.updateIdentityForStaff(id, dto, currentUser);
+    return RegistrationResponseDto.fromDomain(registration);
+  }
+
   @Put(':id')
   @ApiOperation({
     summary: 'Update a registration',
@@ -595,7 +650,7 @@ export class RegistrationController {
   @ApiOperation({
     summary: 'Delete a registration',
     description:
-      'Removes a registration. Admin, staff of the registering club, or staff of the hosting club. Tournament must be approved or in progress. Team roster rows for this registration are removed. Category schedule is not updated automatically.',
+      'Removes a registration. Admin or owner of the hosting club. Tournament must be approved or in progress. Team roster rows for this registration are removed. Category schedule is not updated automatically.',
   })
   @ApiResponse({ status: 204, description: 'Registration deleted' })
   @ApiResponse({ status: 400, description: 'Bad request - registration not open' })

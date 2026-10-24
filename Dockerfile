@@ -16,6 +16,13 @@ ENV NODE_ENV=production
 ENV NODE_OPTIONS=$NODE_OPTIONS
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# Chromium for PDF export (puppeteer uses the system browser instead of downloading its own)
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-roboto \
+  && rm -rf /var/lib/apt/lists/*
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 COPY scripts /app/scripts
 RUN chmod +x /app/scripts/execute.sh
 RUN corepack enable && ./scripts/execute.sh docker-install

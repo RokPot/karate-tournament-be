@@ -58,6 +58,12 @@ export const TEAM_DISCIPLINES: readonly Discipline[] = [
 export const isTeamDiscipline = (discipline: string): boolean =>
   (TEAM_DISCIPLINES as readonly string[]).includes(discipline);
 
+/** Disciplines scored with judge points (printed as handwritten score boxes on brackets). */
+export const POINTED_DISCIPLINES: readonly Discipline[] = [Discipline.KATA, Discipline.KATA_TEAM];
+
+export const disciplineHasPoints = (discipline: string): boolean =>
+  (POINTED_DISCIPLINES as readonly string[]).includes(discipline);
+
 export enum SubDiscipline {
   GOHON_IPPON_KUMITE = 'gohon-ippon-kumite',
   SANBON_IPPON_KUMITE = 'sanbon-ippon-kumite',

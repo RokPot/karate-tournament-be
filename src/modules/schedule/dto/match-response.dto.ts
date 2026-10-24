@@ -54,10 +54,7 @@ export class MatchResponseDto {
     Object.assign(this, data);
   }
 
-  static fromDomain(
-    match: Match,
-    competitors: Map<string, CompetitorRefDto>,
-  ): MatchResponseDto {
+  static fromDomain(match: Match, competitors: Map<string, CompetitorRefDto>): MatchResponseDto {
     return new MatchResponseDto({
       id: match.id,
       gameId: match.gameId,
@@ -67,8 +64,8 @@ export class MatchResponseDto {
       competitorA: match.competitorAId ? (competitors.get(match.competitorAId) ?? null) : null,
       competitorB: match.competitorBId ? (competitors.get(match.competitorBId) ?? null) : null,
       winnerId: match.winnerId,
-      startTime: match.startTime instanceof Date ? match.startTime.toISOString() : match.startTime ?? null,
-      endTime: match.endTime instanceof Date ? match.endTime.toISOString() : match.endTime ?? null,
+      startTime: match.startTime instanceof Date ? match.startTime.toISOString() : (match.startTime ?? null),
+      endTime: match.endTime instanceof Date ? match.endTime.toISOString() : (match.endTime ?? null),
     });
   }
 }

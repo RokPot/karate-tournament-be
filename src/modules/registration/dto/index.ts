@@ -7,6 +7,8 @@ export * from './bulk-team.dto';
 export * from './category-suitable-participants-response.dto';
 export * from './create-registration-with-user.dto';
 export * from './create-registration.dto';
+export * from './create-staff-registration.dto';
+export * from './update-registration-identity.dto';
 export * from './my-registrations-query.dto';
 export * from './public-participant-profile.dto';
 export * from './public-participant-suitable-categories-response.dto';

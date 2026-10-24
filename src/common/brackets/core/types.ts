@@ -9,6 +9,8 @@ export type BracketSlot<T> =
 
 export type BracketMatchWinner = "item" | "item2" | null;
 
+export type BracketScoreValue = number | string | null | undefined;
+
 export type BracketMatch<T> = {
   id: string;
   item: BracketSlot<T>;
@@ -19,6 +21,10 @@ export type BracketMatch<T> = {
     isBye: boolean;
     score?: number | string | null;
     score2?: number | string | null;
+    /** Cells of the score row drawn next to the match result (see `scoreCount`). */
+    scores?: BracketScoreValue[] | null;
+    /** Explicit total for the score row. When unset the total is computed from `scores`. */
+    sum?: number | string | null;
   };
 };
 
@@ -28,10 +34,19 @@ export type BracketRound<T> = {
   matches: BracketMatch<T>[];
 };
 
+export type BracketStop = {
+  /** Rounds cut off after the last generated round (0 = full tree). */
+  fromEnd: number;
+  /** Index of the last generated round. */
+  lastRoundIndex: number;
+};
+
 export type Bracket<T> = {
   kind: BracketKind;
   size: number;
   rounds: BracketRound<T>[];
+  /** Present only when generation was limited with `stopAt` or `singleLayerWhenAtMost`. */
+  stop?: BracketStop;
   thirdPlace?: BracketMatch<T>;
 };
 

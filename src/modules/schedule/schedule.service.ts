@@ -94,6 +94,16 @@ export class ScheduleService {
     return this.findByTournamentAndCategoryOrFail(tournamentId, categoryId);
   }
 
+  /** Number of competitors (registrations or teams) a schedule for this category would use. */
+  async countCompetitors(tournamentId: string, category: Category): Promise<number> {
+    const participants = await this.loadParticipants(
+      tournamentId,
+      category.id,
+      competitorKindForDiscipline(category.discipline),
+    );
+    return participants.length;
+  }
+
   async findByTournamentAndCategory(tournamentId: string, categoryId: string): Promise<Schedule | null> {
     await this.loadTournamentCategory(tournamentId, categoryId);
     const schedule = await this.scheduleRepository.findOne({

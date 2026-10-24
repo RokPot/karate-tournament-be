@@ -8,8 +8,11 @@ import { TournamentCategory } from '../tournament/tournament-category.entity';
 import { Tournament } from '../tournament/tournament.entity';
 import { TournamentModule } from '../tournament/tournament.module';
 
+import { BracketPdfController } from './bracket-pdf.controller';
+import { BracketPdfService } from './bracket-pdf.service';
 import { Game } from './game.entity';
 import { Match } from './match.entity';
+import { PdfRendererService } from './pdf-renderer.service';
 import { ScheduleController } from './schedule.controller';
 import { Schedule } from './schedule.entity';
 import { ScheduleService } from './schedule.service';
@@ -30,8 +33,8 @@ import { Score } from './score.entity';
     ]),
     TournamentModule,
   ],
-  controllers: [ScheduleController],
-  providers: [ScheduleService],
+  controllers: [ScheduleController, BracketPdfController],
+  providers: [ScheduleService, BracketPdfService, PdfRendererService],
   exports: [ScheduleService, TypeOrmModule],
 })
 export class ScheduleModule {}

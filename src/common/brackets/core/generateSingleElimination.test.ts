@@ -163,4 +163,164 @@ describe("generateSingleElimination", () => {
       });
     },
   );
+
+  describe("singleLayerWhenAtMost", () => {
+    it.each([2, 3, 4, 5])(
+      "generates one round for %i participants",
+      (count) => {
+        const bracket = generateSingleElimination(teams(count), getId, {
+          singleLayerWhenAtMost: 5,
+          includeThirdPlace: true,
+        });
+        expect(bracket.rounds).toHaveLength(1);
+        expect(bracket.thirdPlace).toBeUndefined();
+        expect(bracket.stop).toEqual({
+          fromEnd: Math.log2(nextPowerOfTwo(count)) - 1,
+          lastRoundIndex: 0,
+        });
+      },
+    );
+
+    it("pads 5 participants to four first-round matches with three byes", () => {
+      const bracket = generateSingleElimination(teams(5), getId, {
+        singleLayerWhenAtMost: 5,
+      });
+      expect(bracket.rounds[0].matches).toHaveLength(4);
+      expect(
+        bracket.rounds[0].matches.filter((match) => match.data.isBye),
+      ).toHaveLength(3);
+    });
+
+    it("keeps a larger field as a full tree", () => {
+      const bracket = generateSingleElimination(teams(6), getId, {
+        singleLayerWhenAtMost: 5,
+      });
+      expect(bracket.rounds).toHaveLength(3);
+      expect(bracket.stop).toBeUndefined();
+    });
+
+    it("stays a full tree when the option is not set", () => {
+      const bracket = generateSingleElimination(teams(5), getId);
+      expect(bracket.rounds).toHaveLength(3);
+    });
+
+    it("lets the earlier cutoff win when stopAt applies too", () => {
+      const bracket = generateSingleElimination(teams(5), getId, {
+        singleLayerWhenAtMost: 5,
+        stopAt: { fromEnd: 1 },
+      });
+      expect(bracket.rounds).toHaveLength(1);
+    });
+
+    it("ignores the size rule for a larger field and follows stopAt", () => {
+      const bracket = generateSingleElimination(teams(16), getId, {
+        singleLayerWhenAtMost: 5,
+        stopAt: { fromEnd: 2 },
+      });
+      expect(bracket.rounds).toHaveLength(2);
+    });
+
+    it.each([-1, 2.5, Number.NaN])("rejects %s", (value) => {
+      expect(() =>
+        generateSingleElimination(teams(4), getId, {
+          singleLayerWhenAtMost: value,
+        }),
+      ).toThrow(/singleLayerWhenAtMost/);
+    });
+  });
+
+  describe("stopAt", () => {
+    it("omits stop on a full tree", () => {
+      const bracket = generateSingleElimination(teams(8), getId);
+      expect(bracket.stop).toBeUndefined();
+    });
+
+    it("keeps the full tree for fromEnd 0", () => {
+      const bracket = generateSingleElimination(teams(8), getId, {
+        stopAt: { fromEnd: 0 },
+      });
+      expect(bracket.rounds).toHaveLength(3);
+      expect(bracket.stop).toEqual({ fromEnd: 0, lastRoundIndex: 2 });
+    });
+
+    it("stops at the quarterfinals for 8 teams with fromEnd 2", () => {
+      const bracket = generateSingleElimination(teams(8), getId, {
+        stopAt: { fromEnd: 2 },
+        includeThirdPlace: true,
+      });
+      expect(bracket.rounds).toHaveLength(1);
+      expect(bracket.rounds[0].matches).toHaveLength(4);
+      expect(bracket.thirdPlace).toBeUndefined();
+      expect(bracket.stop).toEqual({ fromEnd: 2, lastRoundIndex: 0 });
+    });
+
+    it("stops at the second-to-last round with fromEnd 1", () => {
+      const bracket = generateSingleElimination(teams(8), getId, {
+        stopAt: { fromEnd: 1 },
+        includeThirdPlace: true,
+      });
+      expect(bracket.rounds).toHaveLength(2);
+      expect(bracket.rounds.at(-1)?.matches).toHaveLength(2);
+      expect(bracket.thirdPlace).toBeUndefined();
+      expect(bracket.stop).toEqual({ fromEnd: 1, lastRoundIndex: 1 });
+    });
+
+    it("stops at an absolute round", () => {
+      const bracket = generateSingleElimination(teams(16), getId, {
+        stopAt: { round: 0 },
+      });
+      expect(bracket.rounds).toHaveLength(1);
+      expect(bracket.rounds[0].matches).toHaveLength(8);
+      expect(bracket.stop).toEqual({ fromEnd: 3, lastRoundIndex: 0 });
+    });
+
+    it("keeps two rounds for 16 teams with fromEnd 2", () => {
+      const bracket = generateSingleElimination(teams(16), getId, {
+        stopAt: { fromEnd: 2 },
+      });
+      expect(bracket.rounds.map((round) => round.matches.length)).toEqual([
+        8, 4,
+      ]);
+    });
+
+    it("clamps a fromEnd that would remove every round", () => {
+      const bracket = generateSingleElimination(teams(8), getId, {
+        stopAt: { fromEnd: 10 },
+      });
+      expect(bracket.rounds).toHaveLength(1);
+      expect(bracket.stop).toEqual({ fromEnd: 2, lastRoundIndex: 0 });
+    });
+
+    it("clamps a round past the final to the full tree", () => {
+      const bracket = generateSingleElimination(teams(8), getId, {
+        stopAt: { round: 9 },
+      });
+      expect(bracket.rounds).toHaveLength(3);
+      expect(bracket.stop).toEqual({ fromEnd: 0, lastRoundIndex: 2 });
+    });
+
+    it("keeps third place when the final is kept", () => {
+      const bracket = generateSingleElimination(teams(8), getId, {
+        stopAt: { fromEnd: 0 },
+        includeThirdPlace: true,
+      });
+      expect(bracket.thirdPlace).toBeDefined();
+    });
+
+    it.each([-1, 1.5, Number.NaN])("rejects fromEnd %s", (value) => {
+      expect(() =>
+        generateSingleElimination(teams(8), getId, {
+          stopAt: { fromEnd: value },
+        }),
+      ).toThrow(/non-negative integer/);
+    });
+
+    it.each([-1, 0.5])("rejects round %s", (value) => {
+      expect(() =>
+        generateSingleElimination(teams(8), getId, {
+          stopAt: { round: value },
+        }),
+      ).toThrow(/non-negative integer/);
+    });
+  });
 });
